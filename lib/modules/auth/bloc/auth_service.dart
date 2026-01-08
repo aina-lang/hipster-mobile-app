@@ -279,7 +279,7 @@ class AuthService {
   Future<ApiResponse> verifyResetOtp(String email, String code) async {
     try {
       final response = await AppConstants.dio.post(
-        'auth/forgot-password/verify',
+        'verify-reset-code',
         data: {'email': email, 'code': code},
       );
       return ApiResponse(
@@ -296,11 +296,15 @@ class AuthService {
     }
   }
 
-  Future<ApiResponse> resetPassword(String email, String code) async {
+  Future<ApiResponse> resetPassword(
+    String email,
+    String code,
+    String password,
+  ) async {
     try {
       final response = await AppConstants.dio.post(
         'reset-password',
-        data: {'email': email, 'code': code},
+        data: {'email': email, 'code': code, 'password': password},
       );
       return ApiResponse(
         message: response.data["message"] ?? 'Mot de passe réinitialisé',

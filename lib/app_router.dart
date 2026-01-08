@@ -21,6 +21,8 @@ import 'package:tiko_tiko/modules/auth/views/otp_verification_screen.dart';
 import 'package:tiko_tiko/modules/auth/views/forgot_password_screen.dart';
 import 'package:tiko_tiko/modules/auth/views/reset_otp_screen.dart';
 
+import 'package:tiko_tiko/modules/auth/views/new_password_screen.dart';
+
 // === CLIENT ===
 import 'package:tiko_tiko/modules/client/dashboard/views/dashboard_screen.dart';
 import 'package:tiko_tiko/modules/auth/views/profile_screen.dart';
@@ -71,7 +73,7 @@ class AppRouter {
               state.matchedLocation == '/register' ||
               state.matchedLocation == '/otp-verification' ||
               state.matchedLocation == '/forgot-password' ||
-              state.matchedLocation == '/reset-otp' ||
+              state.matchedLocation == '/reset-otp';
 
           if (!isAllowedPublicPath) {
             print('AppRouter: Unauthenticated, redirecting to /login');
@@ -139,6 +141,15 @@ class AppRouter {
           builder: (context, state) {
             final email = state.extra as String? ?? '';
             return ResetOtpScreen(email: email);
+          },
+        ),
+        GoRoute(
+          path: '/new-password',
+          builder: (context, state) {
+            final extras = state.extra as Map<String, dynamic>;
+            final email = extras['email'] as String;
+            final code = extras['code'] as String;
+            return NewPasswordScreen(email: email, code: code);
           },
         ),
 

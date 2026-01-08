@@ -29,7 +29,7 @@ class _ResetOtpScreenState extends State<ResetOtpScreen> {
   void _onVerify(String pin) {
     if (pin.length < 6) return;
     context.read<AuthBloc>().add(
-      AuthResetPasswordRequested(email: widget.email, code: pin),
+      AuthVerifyResetOtpRequested(email: widget.email, code: pin),
     );
   }
 
@@ -100,13 +100,11 @@ class _ResetOtpScreenState extends State<ResetOtpScreen> {
           if (state is AuthFailure) {
             AppSnackBar.show(context, state.message, type: SnackType.error);
             _pinController.clear();
-          } else if (state is AuthPasswordResetSuccess) {
-            AppSnackBar.show(
-              context,
-              'Mot de passe réinitialisé. Vérifiez vos emails.',
-              type: SnackType.success,
+          } else if (state is AuthResetOtpVerified) {
+            context.push(
+              '/new-password',
+              extra: {'email': state.email, 'code': state.code},
             );
-            context.go('/login');
           }
         },
         builder: (context, state) {

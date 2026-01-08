@@ -270,10 +270,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthFailure(response.message));
       }
     });
+    print('AuthBloc: Registering handlers for reset code verification...');
+
+    on<AuthVerifyResetOtpRequested>((event, emit) async {
+      emit(AuthLoading());
+      final response = await authService.verifyResetOtp(
+        event.email,
+        event.code,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        emit(AuthResetOtpVerified(email: event.email, code: event.code));
+      } else {
+        emit(AuthFailure(response.message));
+      }
+    });
 
     on<AuthResetPasswordRequested>((event, emit) async {
       emit(AuthLoading());
-      final response = await authService.resetPassword(event.email, event.code);
+      final response = await authService.resetPassword(
+        event.email,
+        event.code,
+        event.password,
+      );
       if (response.statusCode == 200 || response.statusCode == 201) {
         emit(AuthPasswordResetSuccess());
       } else {
