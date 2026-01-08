@@ -208,7 +208,8 @@ class ProjectCard extends StatelessWidget {
       );
       final quote = response.firstWhere(
         (i) => i.type == 'quote',
-        orElse: () => throw Exception("Aucun devis trouvé pour ce projet."),
+        orElse: () =>
+            throw Exception("Ce projet n'a pas encore de devis généré."),
       );
 
       await FileService().downloadAndOpenFile(
@@ -216,7 +217,8 @@ class ProjectCard extends StatelessWidget {
         'devis_${quote.reference}.pdf',
       );
     } catch (e) {
-      AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
+      String message = e.toString().replaceFirst('Exception: ', '');
+      AppSnackBar.show(ctx, message, type: SnackType.error);
     }
   }
 
@@ -232,7 +234,9 @@ class ProjectCard extends StatelessWidget {
       );
       final invoice = response.firstWhere(
         (i) => i.type == 'invoice',
-        orElse: () => throw Exception("Aucune facture trouvée pour ce projet."),
+        orElse: () => throw Exception(
+          "Aucune facture n'a encore été générée pour ce projet.",
+        ),
       );
 
       await FileService().downloadAndOpenFile(
@@ -240,7 +244,8 @@ class ProjectCard extends StatelessWidget {
         'facture_${invoice.reference}.pdf',
       );
     } catch (e) {
-      AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
+      String message = e.toString().replaceFirst('Exception: ', '');
+      AppSnackBar.show(ctx, message, type: SnackType.error);
     }
   }
 
@@ -295,21 +300,9 @@ class ProjectCard extends StatelessWidget {
                 ),
                 title: const Text("Télécharger le rapport PDF"),
                 subtitle: const Text("Télécharger la synthèse du projet"),
-                onTap: () async {
+                onTap: () {
                   Navigator.pop(ctx);
-                  AppSnackBar.show(
-                    ctx,
-                    "Génération du rapport PDF...",
-                    position: SnackPosition.top,
-                  );
-                  try {
-                    await FileService().downloadAndOpenFile(
-                      '/projects/${project.id}/pdf',
-                      'rapport_projet_${project.id}.pdf',
-                    );
-                  } catch (e) {
-                    AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
-                  }
+                  _handlePdfAction(ctx);
                 },
               ),
 
@@ -318,29 +311,9 @@ class ProjectCard extends StatelessWidget {
                 leading: const Icon(Icons.receipt_long, color: Colors.teal),
                 title: const Text("Télécharger le devis"),
                 subtitle: const Text("Récupérer le devis en cours du projet"),
-                onTap: () async {
+                onTap: () {
                   Navigator.pop(ctx);
-                  AppSnackBar.show(
-                    ctx,
-                    "Recherche du devis...",
-                    position: SnackPosition.top,
-                  );
-                  try {
-                    final response = await DashboardRepository().getInvoices(
-                      projectId: project.id,
-                    );
-                    final quote = response.firstWhere(
-                      (i) => i.type == 'quote',
-                      orElse: () => throw Exception("Aucun devis trouvé."),
-                    );
-
-                    await FileService().downloadAndOpenFile(
-                      '/invoices/${quote.id}/pdf',
-                      'devis_${quote.reference}.pdf',
-                    );
-                  } catch (e) {
-                    AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
-                  }
+                  _handleQuoteAction(ctx);
                 },
               ),
 
@@ -354,29 +327,9 @@ class ProjectCard extends StatelessWidget {
                 subtitle: const Text(
                   "Télécharger la dernière facture du projet",
                 ),
-                onTap: () async {
+                onTap: () {
                   Navigator.pop(ctx);
-                  AppSnackBar.show(
-                    ctx,
-                    "Recherche de la facture...",
-                    position: SnackPosition.top,
-                  );
-                  try {
-                    final response = await DashboardRepository().getInvoices(
-                      projectId: project.id,
-                    );
-                    final invoice = response.firstWhere(
-                      (i) => i.type == 'invoice',
-                      orElse: () => throw Exception("Aucune facture trouvée."),
-                    );
-
-                    await FileService().downloadAndOpenFile(
-                      '/invoices/${invoice.id}/pdf',
-                      'facture_${invoice.reference}.pdf',
-                    );
-                  } catch (e) {
-                    AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
-                  }
+                  _handleInvoiceAction(ctx);
                 },
               ),
 

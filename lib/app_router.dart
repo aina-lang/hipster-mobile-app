@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
 import 'package:tiko_tiko/layouts/client_layout.dart';
 import 'package:tiko_tiko/modules/client/devis_facture/views/invoice_screen.dart';
+import 'package:tiko_tiko/modules/client/devis_facture/views/invoice_detail_screen.dart';
+import 'package:tiko_tiko/shared/models/invoice_model.dart';
 import 'package:tiko_tiko/modules/client/loyality/views/loyalty_screen.dart';
 import 'package:tiko_tiko/modules/client/notification/views/notification_screen.dart';
 import 'package:tiko_tiko/modules/client/ticket/views/ticket_detail_screen.dart';
@@ -206,6 +208,13 @@ class AppRouter {
             GoRoute(
               path: '/client/notifications',
               builder: (context, state) => const NotificationScreen(),
+            ),
+            GoRoute(
+              path: '/client/invoice-detail',
+              builder: (context, state) {
+                final invoice = state.extra as InvoiceModel;
+                return InvoiceDetailScreen(invoice: invoice);
+              },
             ),
           ],
         ),

@@ -82,14 +82,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 pinned: true,
                 scrolledUnderElevation: 0,
                 backgroundColor: Colors.white,
-                title: const Text(
-                  "PROJETS",
-                  style: TextStyle(
+                title: Text(
+                  "Projets",
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
+                    color: Colors.black,
                   ),
                 ),
-                centerTitle: true,
+                centerTitle: false,
                 actions: [
                   PopupMenuButton<String>(
                     icon: const Icon(Icons.filter_list_rounded),

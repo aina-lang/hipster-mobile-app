@@ -68,51 +68,73 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: Colors.white,
       body: RefreshIndicator(
-        color: cs.primary,
+        color: Colors.black,
         onRefresh: _refresh,
         child: CustomScrollView(
           slivers: [
-            /// --- HEADER ---
+            /// --- AppBar ---
             SliverAppBar(
               pinned: true,
-              expandedHeight: 80,
-              automaticallyImplyLeading: false,
-              backgroundColor: cs.surface,
-              flexibleSpace: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Fidélité & Récompenses",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: cs.onSurface,
-                        ),
+              scrolledUnderElevation: 0,
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              title: Text(
+                "Fidélité & Récompenses",
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                ),
+              ),
+              centerTitle: false,
+              actions: [
+                PopupMenuButton<String>(
+                  tooltip: "Trier",
+                  icon: const Icon(Icons.sort_rounded, color: Colors.black),
+                  onSelected: (value) {
+                    sortBy = value;
+                    _applyFilters();
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: "date_desc",
+                      child: Text("Plus récents"),
+                    ),
+                    PopupMenuItem(
+                      value: "date_asc",
+                      child: Text("Plus anciens"),
+                    ),
+                  ],
+                ),
+              ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(85),
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(16),
+                  child: TextField(
+                    onChanged: (value) {
+                      searchQuery = value;
+                      _applyFilters();
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Rechercher une transaction...",
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: Colors.black54,
                       ),
-                      PopupMenuButton<String>(
-                        tooltip: "Trier",
-                        icon: Icon(Icons.sort_rounded, color: cs.primary),
-                        onSelected: (value) {
-                          sortBy = value;
-                          _applyFilters();
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: "date_desc",
-                            child: Text("Plus récents"),
-                          ),
-                          PopupMenuItem(
-                            value: "date_asc",
-                            child: Text("Plus anciens"),
-                          ),
-                        ],
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
                       ),
-                    ],
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 0,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -129,16 +151,31 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: cs.primary.withOpacity(0.1),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade100),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       padding: const EdgeInsets.all(20),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.stars_rounded,
-                            color: cs.primary,
-                            size: 36,
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: cs.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.stars_rounded,
+                              color: cs.primary,
+                              size: 28,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -146,17 +183,18 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "$totalPoints pts",
+                                  "${totalPoints.toStringAsFixed(0)} pts",
                                   style: TextStyle(
                                     fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: cs.primary,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.black87,
                                   ),
                                 ),
                                 Text(
                                   "Total de vos points fidélité",
                                   style: TextStyle(
-                                    color: cs.onSurface.withOpacity(0.6),
+                                    color: Colors.grey.shade500,
+                                    fontSize: 13,
                                   ),
                                 ),
                               ],
@@ -168,14 +206,15 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
                               horizontal: 16,
                             ),
                             decoration: BoxDecoration(
-                              color: cs.primary,
+                              color: Colors.black,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              "${totalCashback.toStringAsFixed(0)} Ar",
+                              "${(totalCashback / 4000).toStringAsFixed(2)} €", // Assuming a conversion or just standardizing unit
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
                               ),
                             ),
                           ),
@@ -209,76 +248,78 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
               ),
             ),
 
-            /// --- BARRE DE RECHERCHE ---
-            SliverPersistentHeader(
-              floating: true,
-              delegate: _SearchBarDelegate(
-                onChanged: (value) {
-                  searchQuery = value;
-                  _applyFilters();
-                },
-              ),
-            ),
-
             /// --- HISTORIQUE ---
             SliverPadding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate((context, i) {
                   final tx = displayedTransactions[i];
                   final isGain = tx["points"] > 0;
+                  final statusColor = isGain ? Colors.green : Colors.red;
 
-                  return AnimatedSlide(
-                    offset: const Offset(0, 0.1),
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOut,
-                    child: AnimatedOpacity(
-                      opacity: 1,
-                      duration: const Duration(milliseconds: 300),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade100),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: isGain
-                                ? Colors.green.withOpacity(0.15)
-                                : Colors.red.withOpacity(0.15),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             child: Icon(
                               isGain ? Icons.trending_up : Icons.trending_down,
-                              color: isGain ? Colors.green : Colors.red,
+                              color: statusColor,
+                              size: 20,
                             ),
                           ),
-                          title: Text(
-                            tx["title"],
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: cs.onSurface,
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  tx["title"],
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _formatDate(tx["date"]),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          subtitle: Text(
-                            _formatDate(tx["date"]),
-                            style: TextStyle(
-                              color: cs.onSurface.withOpacity(0.6),
-                            ),
-                          ),
-                          trailing: Text(
+                          Text(
                             "${isGain ? '+' : ''}${tx["points"]} pts",
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: isGain ? Colors.green : Colors.red,
+                              fontWeight: FontWeight.w800,
+                              color: statusColor,
+                              fontSize: 14,
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   );
@@ -300,19 +341,35 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               title,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: cs.onSurface,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                color: Colors.black87,
               ),
             ),
           ),
@@ -324,49 +381,4 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
   String _formatDate(DateTime date) {
     return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
   }
-}
-
-class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
-  final ValueChanged<String> onChanged;
-  _SearchBarDelegate({required this.onChanged});
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      color: cs.surface,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: TextField(
-          decoration: const InputDecoration(
-            hintText: "Rechercher une transaction...",
-            prefixIcon: Icon(Icons.search),
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.all(14),
-          ),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
-  @override
-  double get maxExtent => 72;
-  @override
-  double get minExtent => 72;
-  @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
-      false;
 }

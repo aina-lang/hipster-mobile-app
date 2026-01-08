@@ -84,116 +84,118 @@ class _TicketScreenState extends State<TicketScreen> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: Colors.white,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _createTicket(context),
-        icon: const Icon(Icons.add_comment_outlined),
-        label: const Text("Nouveau ticket"),
-        backgroundColor: cs.primary,
-        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_comment_outlined, color: Colors.white),
+        label: const Text(
+          "Nouveau ticket",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.black,
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: RefreshIndicator(
-          color: cs.primary,
+          color: Colors.black,
           onRefresh: _refreshTickets,
           child: CustomScrollView(
             slivers: [
               /// --- AppBar ---
               SliverAppBar(
                 pinned: true,
-                expandedHeight: 80,
-                automaticallyImplyLeading: false,
-                backgroundColor: cs.surface,
-                flexibleSpace: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Support & Tickets",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: cs.onSurface,
-                          ),
+                scrolledUnderElevation: 0,
+                backgroundColor: Colors.white,
+                surfaceTintColor: Colors.transparent,
+                title: Text(
+                  "Support & Tickets",
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                  ),
+                ),
+                centerTitle: false,
+                actions: [
+                  PopupMenuButton<String>(
+                    tooltip: "Filtrer",
+                    icon: const Icon(
+                      Icons.filter_alt_outlined,
+                      color: Colors.black,
+                    ),
+                    onSelected: (value) {
+                      filterStatus = value == "Tous" ? null : value;
+                      _applyFilters();
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: "Tous", child: Text("Tous")),
+                      PopupMenuItem(
+                        value: "En attente",
+                        child: Text("En attente"),
+                      ),
+                      PopupMenuItem(value: "En cours", child: Text("En cours")),
+                      PopupMenuItem(value: "Résolu", child: Text("Résolu")),
+                    ],
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: "Trier",
+                    icon: const Icon(Icons.sort_rounded, color: Colors.black),
+                    onSelected: (value) {
+                      sortBy = value;
+                      _applyFilters();
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: "date_desc",
+                        child: Text("Date décroissante"),
+                      ),
+                      PopupMenuItem(
+                        value: "date_asc",
+                        child: Text("Date croissante"),
+                      ),
+                      PopupMenuItem(
+                        value: "priority_high",
+                        child: Text("Priorité haute"),
+                      ),
+                    ],
+                  ),
+                ],
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(85),
+                  child: Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                    child: TextField(
+                      onChanged: (value) {
+                        searchQuery = value;
+                        _applyFilters();
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Rechercher un ticket...",
+                        prefixIcon: const Icon(
+                          Icons.search_rounded,
+                          color: Colors.black54,
                         ),
-                        Row(
-                          children: [
-                            PopupMenuButton<String>(
-                              tooltip: "Filtrer",
-                              icon: Icon(
-                                Icons.filter_alt_outlined,
-                                color: cs.primary,
-                              ),
-                              onSelected: (value) {
-                                filterStatus = value == "Tous" ? null : value;
-                                _applyFilters();
-                              },
-                              itemBuilder: (context) => const [
-                                PopupMenuItem(
-                                  value: "Tous",
-                                  child: Text("Tous"),
-                                ),
-                                PopupMenuItem(
-                                  value: "En attente",
-                                  child: Text("En attente"),
-                                ),
-                                PopupMenuItem(
-                                  value: "En cours",
-                                  child: Text("En cours"),
-                                ),
-                                PopupMenuItem(
-                                  value: "Résolu",
-                                  child: Text("Résolu"),
-                                ),
-                              ],
-                            ),
-                            PopupMenuButton<String>(
-                              tooltip: "Trier",
-                              icon: Icon(Icons.sort_rounded, color: cs.primary),
-                              onSelected: (value) {
-                                sortBy = value;
-                                _applyFilters();
-                              },
-                              itemBuilder: (context) => const [
-                                PopupMenuItem(
-                                  value: "date_desc",
-                                  child: Text("Date décroissante"),
-                                ),
-                                PopupMenuItem(
-                                  value: "date_asc",
-                                  child: Text("Date croissante"),
-                                ),
-                                PopupMenuItem(
-                                  value: "priority_high",
-                                  child: Text("Priorité haute"),
-                                ),
-                              ],
-                            ),
-                          ],
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
                         ),
-                      ],
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 0,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
 
-              /// --- Barre de recherche ---
-              SliverPersistentHeader(
-                floating: true,
-                delegate: _SearchBarDelegate(
-                  onChanged: (value) {
-                    searchQuery = value;
-                    _applyFilters();
-                  },
-                ),
-              ),
-
-              /// --- Liste des tickets ---
               SliverPadding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final ticket = displayedTickets[index];
@@ -201,62 +203,67 @@ class _TicketScreenState extends State<TicketScreen> {
                       ticket["status"],
                     );
 
-                    return AnimatedSlide(
-                      offset: const Offset(0, 0.05),
-                      duration: const Duration(milliseconds: 300),
-                      child: AnimatedOpacity(
-                        opacity: 1,
-                        duration: const Duration(milliseconds: 300),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade100),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
                         child: InkWell(
                           onTap: () =>
                               _showTicketOptions(context, ticket, ticketColor),
                           borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerHighest.withOpacity(
-                                0.5,
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: cs.outline.withOpacity(0.2),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
+                          child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                /// --- Infos principales ---
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      ticket["title"],
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: cs.onSurface,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "${ticket["id"]} • ${_formatDate(ticket["date"])}",
-                                      style: TextStyle(
-                                        color: cs.onSurface.withOpacity(0.6),
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: ticketColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.confirmation_number_outlined,
+                                    color: ticketColor,
+                                    size: 20,
+                                  ),
                                 ),
-
-                                /// --- Statut & priorité ---
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        ticket["title"],
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "${ticket["id"]} • ${_formatDate(ticket["date"])}",
+                                        style: TextStyle(
+                                          color: Colors.grey.shade500,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
@@ -266,7 +273,7 @@ class _TicketScreenState extends State<TicketScreen> {
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: ticketColor.withOpacity(0.15),
+                                        color: ticketColor.withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
@@ -275,18 +282,18 @@ class _TicketScreenState extends State<TicketScreen> {
                                         ),
                                         style: TextStyle(
                                           color: ticketColor,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 4),
                                     Text(
                                       ticket["priority"],
                                       style: TextStyle(
-                                        fontWeight: FontWeight.w500,
+                                        fontWeight: FontWeight.w600,
                                         color: cs.primary,
-                                        fontSize: 13,
+                                        fontSize: 11,
                                       ),
                                     ),
                                   ],
@@ -313,13 +320,11 @@ class _TicketScreenState extends State<TicketScreen> {
     Map<String, dynamic> ticket,
     Color color,
   ) {
-    final cs = Theme.of(context).colorScheme;
-
     showAppModalBottomSheet(
       context: context,
-      backgroundColor: cs.surface,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) {
         return Padding(
@@ -333,7 +338,7 @@ class _TicketScreenState extends State<TicketScreen> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
-                    color: cs.outline.withOpacity(0.4),
+                    color: Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -383,54 +388,4 @@ class _TicketScreenState extends State<TicketScreen> {
 
   String _formatDate(DateTime d) =>
       "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}";
-}
-
-class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
-  final ValueChanged<String> onChanged;
-  _SearchBarDelegate({required this.onChanged});
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      color: cs.surface,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: TextField(
-          decoration: InputDecoration(
-            hintText: "Rechercher un ticket...",
-            prefixIcon: const Icon(Icons.search),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.all(14),
-          ),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
-  @override
-  double get maxExtent => 72;
-  @override
-  double get minExtent => 72;
-  @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
-      false;
 }

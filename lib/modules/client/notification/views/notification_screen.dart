@@ -122,19 +122,71 @@ class _NotificationScreenState extends State<NotificationScreen>
                     ),
                 ],
                 bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(60),
-                  child: Container(
-                    height: 50,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _categories.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        return _buildCategoryChip(index, cs);
-                      },
-                    ),
+                  preferredSize: const Size.fromHeight(145),
+                  child: Column(
+                    children: [
+                      // Search Bar
+                      Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: TextField(
+                          onChanged: (value) {
+                            setState(() {
+                              searchQuery = value;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: "Rechercher une notification...",
+                            prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              color: Colors.black54,
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 0,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Tab Bar
+                      Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TabBar(
+                          controller: _tabController,
+                          isScrollable: true,
+                          dividerColor: Colors.transparent,
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          tabAlignment: TabAlignment.start,
+                          indicator: ShapeDecoration(
+                            color: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          labelColor: Colors.white,
+                          unselectedLabelColor: cs.onSurface.withOpacity(0.7),
+                          tabs: _categories
+                              .map((cat) => Tab(text: cat))
+                              .toList(),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -168,32 +220,6 @@ class _NotificationScreenState extends State<NotificationScreen>
           );
         },
       ),
-    );
-  }
-
-  Widget _buildCategoryChip(int index, ColorScheme cs) {
-    return AnimatedBuilder(
-      animation: _tabController.animation!,
-      builder: (context, child) {
-        final isSelected = _tabController.index == index;
-        return FilterChip(
-          label: Text(_categories[index]),
-          selected: isSelected,
-          onSelected: (_) => _tabController.animateTo(index),
-          backgroundColor: Colors.grey.shade100,
-          selectedColor: Colors.black,
-          labelStyle: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide.none,
-          ),
-          showCheckmark: false,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        );
-      },
     );
   }
 

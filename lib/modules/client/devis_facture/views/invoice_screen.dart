@@ -4,8 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../bloc/invoice_bloc.dart';
 import '../../../../shared/models/invoice_model.dart';
-import '../../../../shared/utils/ui_helpers.dart';
-import '../../../../shared/services/file_service.dart';
 import '../../../../shared/utils/status_helper.dart';
 
 class InvoiceScreen extends StatefulWidget {
@@ -63,7 +61,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: Colors.white,
       body: BlocBuilder<InvoiceBloc, InvoiceState>(
         builder: (context, state) {
           if (state is InvoiceLoading) {
@@ -93,22 +91,22 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                     floating: true,
                     pinned: true,
                     scrolledUnderElevation: 0,
-                    backgroundColor: cs.surface,
+                    backgroundColor: Colors.white,
                     title: Text(
-                      "DOCUMENTS",
-                      style: TextStyle(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
-                      ),
+                      "Documents",
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
+                          ),
                     ),
-                    centerTitle: true,
+                    centerTitle: false,
                     actions: [
                       PopupMenuButton<String>(
                         tooltip: "Filtrer par statut",
-                        icon: Icon(
+                        icon: const Icon(
                           Icons.filter_list_rounded,
-                          color: cs.primary,
+                          color: Colors.black,
                         ),
                         onSelected: (value) {
                           setState(() {
@@ -130,7 +128,10 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                       ),
                       PopupMenuButton<String>(
                         tooltip: "Trier",
-                        icon: Icon(Icons.sort_rounded, color: cs.primary),
+                        icon: const Icon(
+                          Icons.sort_rounded,
+                          color: Colors.black,
+                        ),
                         onSelected: (value) {
                           setState(() {
                             sortBy = value;
@@ -156,17 +157,36 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                         ],
                       ),
                     ],
-                  ),
-
-                  /// --- Barre de recherche ---
-                  SliverPersistentHeader(
-                    floating: true,
-                    delegate: _SearchBarDelegate(
-                      onChanged: (value) {
-                        setState(() {
-                          searchQuery = value;
-                        });
-                      },
+                    bottom: PreferredSize(
+                      preferredSize: const Size.fromHeight(85),
+                      child: Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.all(16),
+                        child: TextField(
+                          onChanged: (value) {
+                            setState(() {
+                              searchQuery = value;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: "Rechercher un devis ou une facture...",
+                            prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              color: Colors.black54,
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 0,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
 
@@ -175,6 +195,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                     hasScrollBody: true,
                     child: Column(
                       children: [
+                        const SizedBox(height: 8),
                         Container(
                           margin: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
@@ -232,7 +253,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: items.length,
       itemBuilder: (context, i) {
         final item = items[i];
@@ -243,195 +264,105 @@ class _InvoiceScreenState extends State<InvoiceScreen>
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade100),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withOpacity(0.04),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 10,
-            ),
-            title: Text(
-              item.reference,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: cs.onSurface,
-              ),
-            ),
-            subtitle: Text(
-              "Créé le ${DateFormat('dd/MM/yyyy').format(item.createdAt)}",
-              style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
-            ),
-            trailing: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: itemColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    StatusHelper.translateStatus(item.status),
-                    style: TextStyle(
-                      color: itemColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  NumberFormat.currency(
-                    symbol: 'Ar ',
-                    decimalDigits: 0,
-                  ).format(item.amount),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: cs.primary,
-                  ),
-                ),
-              ],
-            ),
-            onTap: () => _showInvoiceOptions(context, item),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showInvoiceOptions(BuildContext context, InvoiceModel item) {
-    final cs = Theme.of(context).colorScheme;
-
-    showAppModalBottomSheet(
-      context: context,
-      backgroundColor: cs.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Wrap(
-            runSpacing: 12,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: cs.outline.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.picture_as_pdf_outlined),
-                title: const Text("Télécharger le PDF"),
-                onTap: () async {
-                  Navigator.pop(context);
-                  try {
-                    await FileService().downloadAndOpenFile(
-                      '/invoices/${item.id}/pdf',
-                      '${item.type}_${item.reference}.pdf',
-                    );
-                  } catch (e) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text("Erreur: $e")));
-                  }
-                },
-              ),
-              if (item.status == "pending")
-                ListTile(
-                  leading: const Icon(Icons.payment),
-                  title: const Text("Payer maintenant"),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Stripe integration ici
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Redirection vers Stripe..."),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => context.push('/client/invoice-detail', extra: item),
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: (type == "devis" ? Colors.blue : Colors.indigo)
+                            .withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  },
+                      child: Icon(
+                        type == "devis"
+                            ? Icons.description_outlined
+                            : Icons.receipt_long_outlined,
+                        color: type == "devis" ? Colors.blue : Colors.indigo,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.reference,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Le ${DateFormat('dd/MM/yyyy').format(item.createdAt)}",
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: itemColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            StatusHelper.translateStatus(item.status),
+                            style: TextStyle(
+                              color: itemColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          NumberFormat.currency(
+                            symbol: '€ ',
+                            decimalDigits: 2,
+                          ).format(item.amount),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: cs.primary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ListTile(
-                leading: const Icon(Icons.visibility_outlined),
-                title: const Text("Voir les détails"),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push('/client/invoice/${item.id}');
-                },
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
-}
-
-class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
-  final ValueChanged<String> onChanged;
-  _SearchBarDelegate({required this.onChanged});
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      color: cs.surface,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(12),
-
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: TextField(
-          decoration: InputDecoration(
-            hintText: "Rechercher un devis ou une facture...",
-            prefixIcon: const Icon(Icons.search),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.all(14),
-          ),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
-  @override
-  double get maxExtent => 72;
-  @override
-  double get minExtent => 72;
-  @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
-      false;
 }
