@@ -13,7 +13,7 @@ import 'package:tiko_tiko/modules/client/ticket/views/ticket_detail_screen.dart'
 import 'package:tiko_tiko/modules/client/ticket/views/ticket_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tiko_tiko/modules/client/devis_facture/bloc/invoice_bloc.dart';
-import 'package:tiko_tiko/modules/client/dashboard/services/dashboard_repository.dart';
+import 'package:tiko_tiko/modules/client/devis_facture/services/invoice_repository.dart';
 
 // === AUTH & ONBOARDING ===
 import 'package:tiko_tiko/modules/auth/views/onboarding_screen.dart';
@@ -185,7 +185,7 @@ class AppRouter {
               path: '/client/invoices',
               builder: (context, state) => BlocProvider(
                 create: (context) =>
-                    InvoiceBloc(DashboardRepository())
+                    InvoiceBloc(InvoiceRepository())
                       ..add(InvoiceLoadRequested()),
                 child: const InvoiceScreen(),
               ),
@@ -213,7 +213,10 @@ class AppRouter {
               path: '/client/invoice-detail',
               builder: (context, state) {
                 final invoice = state.extra as InvoiceModel;
-                return InvoiceDetailScreen(invoice: invoice);
+                return BlocProvider(
+                  create: (context) => InvoiceBloc(InvoiceRepository()),
+                  child: InvoiceDetailScreen(invoice: invoice),
+                );
               },
             ),
           ],
