@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:tiko_tiko/modules/client/devis_facture/bloc/invoice_bloc.dart';
 import 'package:tiko_tiko/modules/client/devis_facture/services/invoice_repository.dart';
 import 'package:tiko_tiko/shared/models/invoice_model.dart';
@@ -432,13 +432,49 @@ class InvoiceDetailScreen extends StatelessWidget {
   void _payInvoice(BuildContext context, int id) async {
     try {
       final repository = InvoiceRepository();
-      final url = await repository.getPaymentLink(id);
-      final uri = Uri.parse(url);
 
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      // 1. Create Payment Intent on backend
+      final data = await repository.createPaymentIntent(id);
+      final clientSecret = data['clientSecret'];
+
+      if (clientSecret == null) {
+        throw 'Impossible de récupérer le secret de paiement';
+      }
+
+      // 2. Initialize Payment Sheet
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'Hipster Marketing',
+          style: ThemeMode.light, // Or based on app theme
+          appearance: const PaymentSheetAppearance(
+            colors: PaymentSheetAppearanceColors(primary: Colors.black),
+          ),
+        ),
+      );
+
+      // 3. Present Payment Sheet
+      await Stripe.instance.presentPaymentSheet();
+
+      // 4. If we reach here, payment was successful or at least sheet was dismissed
+      // Usually, presentPaymentSheet throws on failure/cancel
+
+      AppSnackBar.show(context, "Paiement réussi !", type: SnackType.success);
+
+      // Refresh invoice status
+      context.read<InvoiceBloc>().add(
+        InvoiceStatusUpdateRequested(id: id, status: 'paid'),
+      );
+    } on StripeException catch (e) {
+      if (e.error.code == FailureCode.Canceled) {
+        // User canceled, do nothing or show message
+        print('Payment canceled by user');
       } else {
-        throw 'Could not launch $url';
+        AppSnackBar.show(
+          context,
+          "Erreur Stripe: ${e.error.localizedMessage}",
+          type: SnackType.error,
+        );
       }
     } catch (e) {
       AppSnackBar.show(

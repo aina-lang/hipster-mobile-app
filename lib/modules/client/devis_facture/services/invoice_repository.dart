@@ -57,4 +57,20 @@ class InvoiceRepository {
       rethrow;
     }
   }
+
+  Future<Map<String, dynamic>> createPaymentIntent(int id) async {
+    try {
+      final response = await _dio.post(
+        '/payments/create-payment-intent',
+        data: {'invoiceId': id},
+      );
+      if (response.statusCode == 201) {
+        return response.data['data'];
+      }
+      throw Exception('Failed to create payment intent');
+    } catch (e) {
+      print('Error creating payment intent: $e');
+      rethrow;
+    }
+  }
 }

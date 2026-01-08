@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:tiko_tiko/app_router.dart';
 import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
 import 'package:tiko_tiko/shared/blocs/network/network_bloc.dart';
@@ -19,6 +20,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await initializeDateFormatting('fr_FR', null);
+
+  // Initialize Stripe
+  Stripe.publishableKey =
+      "pk_test_51...your_key_here..."; // TODO: Replace with real key from config
+  await Stripe.instance.applySettings();
 
   runApp(MyApp());
 }

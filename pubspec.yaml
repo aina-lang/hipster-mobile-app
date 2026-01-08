@@ -49,6 +49,7 @@ dependencies:
   url_launcher: ^6.2.5
   flutter_animate: ^4.5.2
   pinput: ^6.0.1
+  flutter_stripe: ^12.1.0
   # ussd_service: ^0.1.1
   # sim_data: ^0.0.2
 
