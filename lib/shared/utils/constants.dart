@@ -3,12 +3,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AppConstants {
   static final Dio dio = _createDio();
- static const String baseFileUrl = "https://hipster-api.fr";
-static String resolveFileUrl(String? path) {
-  if (path == null || path.isEmpty) return "";
-  if (path.startsWith("http")) return path;
-  return baseFileUrl + path;
-}
+  static const String baseFileUrl = "https://hipster-api.fr";
+  static String resolveFileUrl(String? path) {
+    if (path == null || path.isEmpty) return "";
+    if (path.startsWith("http")) return path;
+    return baseFileUrl + path;
+  }
 
   static Dio _createDio() {
     final dio = Dio(
@@ -43,57 +43,65 @@ static String resolveFileUrl(String? path) {
         onError: (DioException e, handler) async {
           if (e.response?.statusCode == 401) {
             print(
-              'Dio Interceptor: 401 Unauthorized at ${e.requestOptions.path}',
+              '🔴 Dio Interceptor: 401 Unauthorized at ${e.requestOptions.path}',
             );
+            print('🔍 Headers Sent: ${e.requestOptions.headers}');
+            print('🔍 Response Body: ${e.response?.data}');
 
-            final prefs = await SharedPreferences.getInstance();
-            print(
-              'Dio Interceptor: 401 Debug - token key: ${prefs.getString('token') != null}, refresh_token key: ${prefs.getString('refresh_token') != null}',
-            );
-            print('Dio Interceptor: 401 Debug - all keys: ${prefs.getKeys()}');
-
-            // Si on est déjà en train de rafraîchir ou si c'est déjà l'URL de login/refresh, on évite la boucle
+            // Si on est déjà en train de rafraîchir pas la peine de boucler
             if (e.requestOptions.path.contains('refresh') ||
                 e.requestOptions.path.contains('login')) {
+              print('⚠️ Stopping loop: 401 on refresh/login endpoint.');
               return handler.next(e);
             }
 
-            // Tentative de refresh
             try {
               final prefs = await SharedPreferences.getInstance();
               final refreshToken = prefs.getString('refresh_token');
 
               if (refreshToken != null) {
                 print('Dio Interceptor: Attempting token refresh...');
-                // Utilisation d'une instance DIO séparée ou appel direct pour éviter les intercepteurs en boucle sur le /refresh si besoin
-                // Mais ici on utilise le même dio, d'où le check .contains('refresh') au dessus.
-                final response = await dio.post(
+
+                // Le backend attend le Refresh Token dans le header Authorization
+                // (Guard: AuthGuard('jwt-refresh'))
+                final refreshResponse = await dio.post(
                   'refresh',
-                  data: {'refreshToken': refreshToken},
+                  options: Options(
+                    headers: {'Authorization': 'Bearer $refreshToken'},
+                  ),
                 );
 
-                if (response.statusCode == 200 || response.statusCode == 201) {
-                  // Le backend renvoie { data: { access_token: "...", refresh_token: "..." } }
-                  final data = response.data['data'] ?? response.data;
-                  final newAccessToken = data['access_token'];
-                  final newRefreshToken = data['refresh_token'];
+                if (refreshResponse.statusCode == 200 ||
+                    refreshResponse.statusCode == 201) {
+                  // Le backend doit renvoyer les nouveaux tokens.
+                  // Adaptez selon la réponse exacte : { accessToken: "...", refreshToken: "..." } ou { data: ... }
+                  final data =
+                      refreshResponse.data['data'] ?? refreshResponse.data;
 
-                  await prefs.setString('token', newAccessToken);
-                  await prefs.setString('refresh_token', newRefreshToken);
+                  // Vérifier la structure exacte renvoyée par AuthService.refreshToken
+                  final newAccessToken =
+                      data['access_token'] ?? data['accessToken'];
+                  final newRefreshToken =
+                      data['refresh_token'] ?? data['refreshToken'];
 
-                  print(
-                    'Dio Interceptor: Refresh successful, retrying original request',
-                  );
+                  if (newAccessToken != null) {
+                    await prefs.setString('token', newAccessToken);
+                    if (newRefreshToken != null) {
+                      await prefs.setString('refresh_token', newRefreshToken);
+                    }
 
-                  // Réessayer la requête originale avec le nouveau token
-                  final opts = e.requestOptions;
-                  opts.headers['Authorization'] = 'Bearer $newAccessToken';
-                  return handler.resolve(await dio.fetch(opts));
+                    print('Dio Interceptor: Refresh successful, retrying...');
+
+                    // Réessayer la requête originale avec le nouveau token
+                    final opts = e.requestOptions;
+                    opts.headers['Authorization'] = 'Bearer $newAccessToken';
+                    return handler.resolve(await dio.fetch(opts));
+                  }
                 }
               }
             } catch (refreshError) {
               print('Dio Interceptor: Refresh failed: $refreshError');
-              // On pourrait ici notifier le bloc pour déconnecter l'utilisateur
+              // Optionnel : Forcer la déconnexion ici si le refresh échoue
             }
           }
           return handler.next(e);

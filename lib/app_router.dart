@@ -9,17 +9,24 @@ import 'package:tiko_tiko/modules/client/loyality/views/loyalty_screen.dart';
 import 'package:tiko_tiko/modules/client/notification/views/notification_screen.dart';
 import 'package:tiko_tiko/modules/client/ticket/views/ticket_detail_screen.dart';
 import 'package:tiko_tiko/modules/client/ticket/views/ticket_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tiko_tiko/modules/client/devis_facture/bloc/invoice_bloc.dart';
+import 'package:tiko_tiko/modules/client/dashboard/services/dashboard_repository.dart';
 
 // === AUTH & ONBOARDING ===
 import 'package:tiko_tiko/modules/auth/views/onboarding_screen.dart';
 import 'package:tiko_tiko/modules/auth/views/login_screen.dart';
 import 'package:tiko_tiko/modules/auth/views/register_screen.dart';
 import 'package:tiko_tiko/modules/auth/views/otp_verification_screen.dart';
+import 'package:tiko_tiko/modules/auth/views/forgot_password_screen.dart';
+import 'package:tiko_tiko/modules/auth/views/reset_otp_screen.dart';
 
 // === CLIENT ===
 import 'package:tiko_tiko/modules/client/dashboard/views/dashboard_screen.dart';
 import 'package:tiko_tiko/modules/auth/views/profile_screen.dart';
 import 'package:tiko_tiko/modules/client/project/views/project_screen.dart';
+import 'package:tiko_tiko/modules/client/project/views/project_detail_screen.dart';
+import 'package:tiko_tiko/shared/models/project_model.dart';
 
 class AppRouter {
   AppRouter();
@@ -40,6 +47,8 @@ class AppRouter {
             state.matchedLocation == '/login' ||
             state.matchedLocation == '/register' ||
             state.matchedLocation == '/otp-verification' ||
+            state.matchedLocation == '/forgot-password' ||
+            state.matchedLocation == '/reset-otp' ||
             state.matchedLocation == '/';
 
         if (authState is AuthInitial) {
@@ -60,7 +69,9 @@ class AppRouter {
           final bool isAllowedPublicPath =
               state.matchedLocation == '/login' ||
               state.matchedLocation == '/register' ||
-              state.matchedLocation == '/otp-verification';
+              state.matchedLocation == '/otp-verification' ||
+              state.matchedLocation == '/forgot-password' ||
+              state.matchedLocation == '/reset-otp' ||
 
           if (!isAllowedPublicPath) {
             print('AppRouter: Unauthenticated, redirecting to /login');
@@ -119,6 +130,17 @@ class AppRouter {
             return OtpVerificationScreen(email: email);
           },
         ),
+        GoRoute(
+          path: '/forgot-password',
+          builder: (context, state) => const ForgotPasswordScreen(),
+        ),
+        GoRoute(
+          path: '/reset-otp',
+          builder: (context, state) {
+            final email = state.extra as String? ?? '';
+            return ResetOtpScreen(email: email);
+          },
+        ),
 
         GoRoute(
           path: '/profile',
@@ -138,8 +160,22 @@ class AppRouter {
               builder: (context, state) => const ProjectScreen(),
             ),
             GoRoute(
+              path: '/client/projects/:id',
+              builder: (context, state) {
+                final project = state.extra as ProjectModel?;
+                final idStr = state.pathParameters['id'];
+                final id = idStr != null ? int.tryParse(idStr) : null;
+                return ProjectDetailScreen(project: project, projectId: id);
+              },
+            ),
+            GoRoute(
               path: '/client/invoices',
-              builder: (context, state) => const InvoiceScreen(),
+              builder: (context, state) => BlocProvider(
+                create: (context) =>
+                    InvoiceBloc(DashboardRepository())
+                      ..add(InvoiceLoadRequested()),
+                child: const InvoiceScreen(),
+              ),
             ),
             GoRoute(
               path: '/client/tickets',

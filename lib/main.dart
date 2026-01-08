@@ -13,6 +13,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:tiko_tiko/shared/blocs/network/network_state.dart';
 import 'package:tiko_tiko/modules/client/project/services/project_repository.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_bloc.dart';
+import 'package:tiko_tiko/shared/blocs/ui/ui_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,10 +28,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: [SystemUiOverlay.top],
-    );
+    // SystemChrome.setEnabledSystemUIMode(
+    //   SystemUiMode.manual,
+    //   overlays: [SystemUiOverlay.top],
+    // );
     return MultiBlocProvider(
       providers: [
         BlocProvider(
@@ -39,6 +40,7 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => NetworkBloc(NetworkService())),
         BlocProvider(create: (_) => NotificationBloc()),
         BlocProvider(create: (_) => ProjectBloc(ProjectRepository())),
+        BlocProvider(create: (_) => UiCubit()),
       ],
       child: Builder(
         builder: (context) {

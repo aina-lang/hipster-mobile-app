@@ -8,6 +8,7 @@ import 'package:tiko_tiko/shared/widgets/custom_button.dart';
 import 'package:tiko_tiko/shared/widgets/searchable_country_dropdown.dart';
 import 'package:tiko_tiko/shared/models/country_model.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:tiko_tiko/shared/utils/ui_helpers.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -149,7 +150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       builder: (BuildContext BC) {
         return SafeArea(
@@ -350,9 +351,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             backgroundColor: Colors.grey.shade200,
                             backgroundImage: user.avatarUrl != null
                                 ? NetworkImage(
-                                    AppConstants.resolveFileUrl(
-                                      user.avatarUrl,
-                                    ),
+                                    AppConstants.resolveFileUrl(user.avatarUrl),
                                   )
                                 : null,
                             child: user.avatarUrl == null

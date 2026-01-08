@@ -54,9 +54,12 @@ class DashboardRepository {
     }
   }
 
-  Future<List<InvoiceModel>> getInvoices() async {
+  Future<List<InvoiceModel>> getInvoices({int? projectId}) async {
     try {
-      final response = await _dio.get('/invoices');
+      final response = await _dio.get(
+        '/invoices',
+        queryParameters: projectId != null ? {'projectId': projectId} : null,
+      );
       if (response.statusCode == 200) {
         final rawData = response.data['data'];
         final List listData = (rawData is Map)

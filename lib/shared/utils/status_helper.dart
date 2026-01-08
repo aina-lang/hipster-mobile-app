@@ -26,7 +26,7 @@ class StatusHelper {
       case 'todo':
         return 'À FAIRE';
       case 'review':
-        return 'EN RÉVISION';
+        return 'RÉVISION';
       case 'done':
         return 'TERMINÉ';
       case 'blocked':

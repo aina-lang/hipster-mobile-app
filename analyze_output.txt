@@ -1,0 +1,30 @@
+Analyzing 9 items...                                            
+
+   info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • lib/layouts/client_layout.dart:1:8 • unnecessary_import
+   info • The variable name 'BC' isn't a lowerCamelCase identifier • lib/modules/auth/views/profile_screen.dart:155:30 • non_constant_identifier_names
+   info • Don't invoke 'print' in production code • lib/modules/auth/views/profile_screen.dart:276:9 • avoid_print
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/devis_facture/views/invoice_screen.dart:181:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/devis_facture/views/invoice_screen.dart:195:64 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/devis_facture/views/invoice_screen.dart:229:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/devis_facture/views/invoice_screen.dart:248:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/devis_facture/views/invoice_screen.dart:268:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/devis_facture/views/invoice_screen.dart:280:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/devis_facture/views/invoice_screen.dart:333:39 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps • lib/modules/client/devis_facture/views/invoice_screen.dart:350:23 • use_build_context_synchronously
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/devis_facture/views/invoice_screen.dart:403:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/devis_facture/views/invoice_screen.dart:408:35 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/ticket/views/ticket_screen.dart:217:65 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/ticket/views/ticket_screen.dart:222:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/ticket/views/ticket_screen.dart:226:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/ticket/views/ticket_screen.dart:252:61 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/ticket/views/ticket_screen.dart:269:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/ticket/views/ticket_screen.dart:336:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/ticket/views/ticket_screen.dart:406:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/modules/client/ticket/views/ticket_screen.dart:410:35 • deprecated_member_use
+  error • The argument type 'double?' can't be assigned to the parameter type 'double'.  • lib/shared/utils/ui_helpers.dart:49:42 • argument_type_not_assignable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/shared/widgets/project_card.dart:34:35 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps • lib/shared/widgets/project_card.dart:302:38 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/shared/widgets/project_card.dart:337:38 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/shared/widgets/project_card.dart:376:38 • use_build_context_synchronously
+
+26 issues found. (ran in 3.5s)

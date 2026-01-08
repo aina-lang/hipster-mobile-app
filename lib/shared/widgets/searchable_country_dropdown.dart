@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/country_model.dart';
 import '../utils/countries_data.dart';
+import '../utils/ui_helpers.dart';
 
 class SearchableCountryDropdown extends StatefulWidget {
   final String? initialValue;
@@ -41,7 +42,7 @@ class _SearchableCountryDropdownState extends State<SearchableCountryDropdown> {
   }
 
   void _showCountryPicker() {
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

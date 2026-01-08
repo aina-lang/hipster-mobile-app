@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import '../bloc/invoice_bloc.dart';
+import '../../../../shared/models/invoice_model.dart';
+import '../../../../shared/utils/ui_helpers.dart';
+import '../../../../shared/services/file_service.dart';
 import '../../../../shared/utils/status_helper.dart';
 
 class InvoiceScreen extends StatefulWidget {
@@ -16,88 +22,40 @@ class _InvoiceScreenState extends State<InvoiceScreen>
   String? filterStatus;
   String sortBy = "date_desc";
 
-  final List<Map<String, dynamic>> quotes = [
-    {
-      "id": "DEV-001",
-      "title": "Création site web",
-      "amount": 450000,
-      "status": "on_hold",
-      "date": DateTime(2025, 10, 2),
-    },
-    {
-      "id": "DEV-002",
-      "title": "Campagne Google Ads",
-      "amount": 300000,
-      "status": "completed",
-      "date": DateTime(2025, 9, 28),
-    },
-  ];
-
-  final List<Map<String, dynamic>> invoices = [
-    {
-      "id": "FAC-101",
-      "title": "Logo & Identité visuelle",
-      "amount": 200000,
-      "status": "paid",
-      "date": DateTime(2025, 9, 18),
-    },
-    {
-      "id": "FAC-102",
-      "title": "Community Management",
-      "amount": 150000,
-      "status": "on_hold",
-      "date": DateTime(2025, 10, 5),
-    },
-  ];
-
-  List<Map<String, dynamic>> displayedQuotes = [];
-  List<Map<String, dynamic>> displayedInvoices = [];
-
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    displayedQuotes = List.from(quotes);
-    displayedInvoices = List.from(invoices);
   }
 
-  void _applyFilters() {
-    setState(() {
-      List<Map<String, dynamic>> filterList(List<Map<String, dynamic>> source) {
-        var result = source.where((item) {
-          final matchesSearch = item["title"].toString().toLowerCase().contains(
-            searchQuery.toLowerCase(),
-          );
-          final matchesFilter =
-              filterStatus == null || item["status"] == filterStatus;
-          return matchesSearch && matchesFilter;
-        }).toList();
+  List<InvoiceModel> _filterList(List<InvoiceModel> source) {
+    var result = source.where((item) {
+      final matchesSearch = item.reference.toLowerCase().contains(
+        searchQuery.toLowerCase(),
+      );
+      final matchesFilter = filterStatus == null || item.status == filterStatus;
+      return matchesSearch && matchesFilter;
+    }).toList();
 
-        switch (sortBy) {
-          case "date_desc":
-            result.sort((a, b) => b["date"].compareTo(a["date"]));
-            break;
-          case "date_asc":
-            result.sort((a, b) => a["date"].compareTo(b["date"]));
-            break;
-          case "amount_desc":
-            result.sort((a, b) => b["amount"].compareTo(a["amount"]));
-            break;
-          case "amount_asc":
-            result.sort((a, b) => a["amount"].compareTo(b["amount"]));
-            break;
-        }
-        return result;
-      }
-
-      displayedQuotes = filterList(quotes);
-      displayedInvoices = filterList(invoices);
-    });
+    switch (sortBy) {
+      case "date_desc":
+        result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case "date_asc":
+        result.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+      case "amount_desc":
+        result.sort((a, b) => b.amount.compareTo(a.amount));
+        break;
+      case "amount_asc":
+        result.sort((a, b) => a.amount.compareTo(b.amount));
+        break;
+    }
+    return result;
   }
 
   Future<void> _refreshData() async {
-    await Future.delayed(const Duration(seconds: 1));
-    _applyFilters();
+    context.read<InvoiceBloc>().add(InvoiceLoadRequested(refresh: true));
   }
 
   @override
@@ -106,165 +64,164 @@ class _InvoiceScreenState extends State<InvoiceScreen>
 
     return Scaffold(
       backgroundColor: cs.surface,
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: RefreshIndicator(
-          color: cs.primary,
-          onRefresh: _refreshData,
-          child: CustomScrollView(
-            slivers: [
-              /// --- AppBar ---
-              SliverAppBar(
-                pinned: true,
-                expandedHeight: 80,
-                automaticallyImplyLeading: false,
-                backgroundColor: cs.surface,
-                flexibleSpace: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: BlocBuilder<InvoiceBloc, InvoiceState>(
+        builder: (context, state) {
+          if (state is InvoiceLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state is InvoiceFailure) {
+            return Center(child: Text("Erreur: ${state.error}"));
+          }
+          if (state is InvoiceLoaded) {
+            final allQuotes = state.invoices
+                .where((i) => i.type == 'quote')
+                .toList();
+            final allInvoices = state.invoices
+                .where((i) => i.type == 'invoice')
+                .toList();
+
+            final displayedQuotes = _filterList(allQuotes);
+            final displayedInvoices = _filterList(allInvoices);
+
+            return RefreshIndicator(
+              color: cs.primary,
+              onRefresh: _refreshData,
+              child: CustomScrollView(
+                slivers: [
+                  /// --- AppBar ---
+                  SliverAppBar(
+                    floating: true,
+                    pinned: true,
+                    scrolledUnderElevation: 0,
+                    backgroundColor: cs.surface,
+                    title: Text(
+                      "DOCUMENTS",
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    centerTitle: true,
+                    actions: [
+                      PopupMenuButton<String>(
+                        tooltip: "Filtrer par statut",
+                        icon: Icon(
+                          Icons.filter_list_rounded,
+                          color: cs.primary,
+                        ),
+                        onSelected: (value) {
+                          setState(() {
+                            filterStatus = value == "Tous" ? null : value;
+                          });
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(value: "Tous", child: Text("Tous")),
+                          PopupMenuItem(
+                            value: "pending",
+                            child: Text("En attente"),
+                          ),
+                          PopupMenuItem(value: "paid", child: Text("Payée")),
+                          PopupMenuItem(
+                            value: "accepted",
+                            child: Text("Accepté"),
+                          ),
+                        ],
+                      ),
+                      PopupMenuButton<String>(
+                        tooltip: "Trier",
+                        icon: Icon(Icons.sort_rounded, color: cs.primary),
+                        onSelected: (value) {
+                          setState(() {
+                            sortBy = value;
+                          });
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: "date_desc",
+                            child: Text("Date décroissante"),
+                          ),
+                          PopupMenuItem(
+                            value: "date_asc",
+                            child: Text("Date croissante"),
+                          ),
+                          PopupMenuItem(
+                            value: "amount_desc",
+                            child: Text("Montant décroissant"),
+                          ),
+                          PopupMenuItem(
+                            value: "amount_asc",
+                            child: Text("Montant croissant"),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  /// --- Barre de recherche ---
+                  SliverPersistentHeader(
+                    floating: true,
+                    delegate: _SearchBarDelegate(
+                      onChanged: (value) {
+                        setState(() {
+                          searchQuery = value;
+                        });
+                      },
+                    ),
+                  ),
+
+                  /// --- Contenu avec onglets ---
+                  SliverFillRemaining(
+                    hasScrollBody: true,
+                    child: Column(
                       children: [
-                        Text(
-                          "Devis & Factures",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: cs.onSurface,
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHighest.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: TabBar(
+                            dividerColor: Colors.transparent,
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            controller: _tabController,
+                            indicator: ShapeDecoration(
+                              color: cs.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            labelColor: Colors.white,
+                            unselectedLabelColor: cs.onSurface.withOpacity(0.7),
+                            tabs: const [
+                              Tab(text: "Devis"),
+                              Tab(text: "Factures"),
+                            ],
                           ),
                         ),
-                        Row(
-                          children: [
-                            PopupMenuButton<String>(
-                              tooltip: "Filtrer",
-                              icon: Icon(
-                                Icons.filter_alt_outlined,
-                                color: cs.primary,
-                              ),
-                              onSelected: (value) {
-                                filterStatus = value == "Tous" ? null : value;
-                                _applyFilters();
-                              },
-                              itemBuilder: (context) => const [
-                                PopupMenuItem(
-                                  value: "Tous",
-                                  child: Text("Tous"),
-                                ),
-                                PopupMenuItem(
-                                  value: "En attente",
-                                  child: Text("En attente"),
-                                ),
-                                PopupMenuItem(
-                                  value: "Payée",
-                                  child: Text("Payée"),
-                                ),
-                                PopupMenuItem(
-                                  value: "Accepté",
-                                  child: Text("Accepté"),
-                                ),
-                              ],
-                            ),
-                            PopupMenuButton<String>(
-                              tooltip: "Trier",
-                              icon: Icon(Icons.sort_rounded, color: cs.primary),
-                              onSelected: (value) {
-                                sortBy = value;
-                                _applyFilters();
-                              },
-                              itemBuilder: (context) => const [
-                                PopupMenuItem(
-                                  value: "date_desc",
-                                  child: Text("Date décroissante"),
-                                ),
-                                PopupMenuItem(
-                                  value: "date_asc",
-                                  child: Text("Date croissante"),
-                                ),
-                                PopupMenuItem(
-                                  value: "amount_desc",
-                                  child: Text("Montant décroissant"),
-                                ),
-                                PopupMenuItem(
-                                  value: "amount_asc",
-                                  child: Text("Montant croissant"),
-                                ),
-                              ],
-                            ),
-                          ],
+                        Expanded(
+                          child: TabBarView(
+                            controller: _tabController,
+                            children: [
+                              _buildList(displayedQuotes, cs, "devis"),
+                              _buildList(displayedInvoices, cs, "factures"),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
+                ],
               ),
-
-              /// --- Barre de recherche ---
-              SliverPersistentHeader(
-                floating: true,
-                delegate: _SearchBarDelegate(
-                  onChanged: (value) {
-                    searchQuery = value;
-                    _applyFilters();
-                  },
-                ),
-              ),
-
-              /// --- Contenu avec onglets ---
-              SliverFillRemaining(
-                hasScrollBody: true,
-                child: Column(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TabBar(
-                        dividerColor: Colors.transparent,
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        controller: _tabController,
-                        indicator: ShapeDecoration(
-                          color: cs.primary,
-                          shape:
-                              // const StadiumBorder(), // ou RoundedRectangleBorder pour coins arrondis
-                              // shape:
-                              RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                        ),
-                        labelColor: Colors.white,
-                        unselectedLabelColor: cs.onSurface.withOpacity(0.7),
-                        tabs: const [
-                          Tab(text: "Devis"),
-                          Tab(text: "Factures"),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildList(displayedQuotes, cs, "devis"),
-                          _buildList(displayedInvoices, cs, "facture"),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+            );
+          }
+          return const SizedBox();
+        },
       ),
     );
   }
 
-  Widget _buildList(
-    List<Map<String, dynamic>> items,
-    ColorScheme cs,
-    String type,
-  ) {
+  Widget _buildList(List<InvoiceModel> items, ColorScheme cs, String type) {
     if (items.isEmpty) {
       return Center(
         child: Text(
@@ -279,87 +236,85 @@ class _InvoiceScreenState extends State<InvoiceScreen>
       itemCount: items.length,
       itemBuilder: (context, i) {
         final item = items[i];
-        final itemColor = StatusHelper.getStatusColor(item["status"]);
+        final itemColor = StatusHelper.getStatusColor(item.status);
 
-        return AnimatedSlide(
-          offset: const Offset(0, 0.1),
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOut,
-          child: AnimatedOpacity(
-            opacity: 1,
-            duration: const Duration(milliseconds: 400),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(color: Colors.black26, offset: Offset.zero),
-                ],
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                title: Text(
-                  item["title"],
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface,
-                  ),
-                ),
-                subtitle: Text(
-                  "${item["id"]} • ${_formatDate(item["date"])}",
-                  style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
-                ),
-                trailing: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: itemColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        StatusHelper.translateStatus(item["status"]),
-                        style: TextStyle(
-                          color: itemColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "${item["amount"]} Ar",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: cs.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                onTap: () => _showInvoiceOptions(context, item),
+            ],
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 10,
+            ),
+            title: Text(
+              item.reference,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
               ),
             ),
+            subtitle: Text(
+              "Créé le ${DateFormat('dd/MM/yyyy').format(item.createdAt)}",
+              style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
+            ),
+            trailing: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: itemColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    StatusHelper.translateStatus(item.status),
+                    style: TextStyle(
+                      color: itemColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  NumberFormat.currency(
+                    symbol: 'Ar ',
+                    decimalDigits: 0,
+                  ).format(item.amount),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: cs.primary,
+                  ),
+                ),
+              ],
+            ),
+            onTap: () => _showInvoiceOptions(context, item),
           ),
         );
       },
     );
   }
 
-  void _showInvoiceOptions(BuildContext context, Map<String, dynamic> item) {
+  void _showInvoiceOptions(BuildContext context, InvoiceModel item) {
     final cs = Theme.of(context).colorScheme;
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       backgroundColor: cs.surface,
-
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -383,15 +338,21 @@ class _InvoiceScreenState extends State<InvoiceScreen>
               ListTile(
                 leading: const Icon(Icons.picture_as_pdf_outlined),
                 title: const Text("Télécharger le PDF"),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
-                  // TODO: Implémenter téléchargement PDF
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Téléchargement du PDF...")),
-                  );
+                  try {
+                    await FileService().downloadAndOpenFile(
+                      '/invoices/${item.id}/pdf',
+                      '${item.type}_${item.reference}.pdf',
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text("Erreur: $e")));
+                  }
                 },
               ),
-              if (item["status"] == "En attente")
+              if (item.status == "pending")
                 ListTile(
                   leading: const Icon(Icons.payment),
                   title: const Text("Payer maintenant"),
@@ -410,7 +371,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                 title: const Text("Voir les détails"),
                 onTap: () {
                   Navigator.pop(context);
-                  context.push('/client/invoice/${item["id"]}');
+                  context.push('/client/invoice/${item.id}');
                 },
               ),
             ],
@@ -419,9 +380,6 @@ class _InvoiceScreenState extends State<InvoiceScreen>
       },
     );
   }
-
-  String _formatDate(DateTime d) =>
-      "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}";
 }
 
 class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
@@ -459,9 +417,7 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
             prefixIcon: const Icon(Icons.search),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: cs.outline.withAlpha((0.2 * 255).round()),
-              ),
+              borderSide: BorderSide.none,
             ),
             contentPadding: const EdgeInsets.all(14),
           ),

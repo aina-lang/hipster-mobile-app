@@ -5,6 +5,7 @@ import 'package:tiko_tiko/shared/widgets/project_card.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_bloc.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_event.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_state.dart';
+import 'package:tiko_tiko/shared/utils/ui_helpers.dart';
 
 class ProjectScreen extends StatefulWidget {
   const ProjectScreen({super.key});
@@ -218,7 +219,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
     DateTime startDate = DateTime.now();
     DateTime endDate = DateTime.now().add(const Duration(days: 30));
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,

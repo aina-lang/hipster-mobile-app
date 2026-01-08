@@ -54,4 +54,22 @@ class ProjectRepository {
       return false;
     }
   }
+
+  Future<ProjectModel?> getProject(int id) async {
+    try {
+      final response = await _dio.get('/projects/$id');
+      if (response.statusCode == 200) {
+        // Handle wrapped response { data: ... } or direct object
+        final dynamic data = response.data;
+        if (data is Map<String, dynamic> && data.containsKey('data')) {
+          return ProjectModel.fromJson(data['data']);
+        }
+        return ProjectModel.fromJson(data);
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching project $id: $e');
+      return null;
+    }
+  }
 }

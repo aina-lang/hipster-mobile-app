@@ -261,5 +261,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthFailure(response.message));
       }
     });
+    on<AuthForgotPasswordRequested>((event, emit) async {
+      emit(AuthLoading());
+      final response = await authService.requestPasswordReset(event.email);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        emit(AuthResetOtpSent(event.email));
+      } else {
+        emit(AuthFailure(response.message));
+      }
+    });
+
+    on<AuthResetPasswordRequested>((event, emit) async {
+      emit(AuthLoading());
+      final response = await authService.resetPassword(event.email, event.code);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        emit(AuthPasswordResetSuccess());
+      } else {
+        emit(AuthFailure(response.message));
+      }
+    });
   }
 }

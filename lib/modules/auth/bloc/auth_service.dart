@@ -255,4 +255,65 @@ class AuthService {
       );
     }
   }
+
+  Future<ApiResponse> requestPasswordReset(String email) async {
+    try {
+      final response = await AppConstants.dio.post(
+        'forgot-password',
+        data: {'email': email},
+      );
+      return ApiResponse(
+        message: response.data["message"] ?? 'Code de réinitialisation envoyé',
+        statusCode: response.statusCode!,
+        data: response.data,
+      );
+    } on DioException catch (e) {
+      return ApiResponse(
+        message: e.response?.data['message'] ?? 'Erreur lors de la demande',
+        statusCode: e.response?.statusCode ?? 500,
+        data: e.response?.data,
+      );
+    }
+  }
+
+  Future<ApiResponse> verifyResetOtp(String email, String code) async {
+    try {
+      final response = await AppConstants.dio.post(
+        'auth/forgot-password/verify',
+        data: {'email': email, 'code': code},
+      );
+      return ApiResponse(
+        message: response.data["message"] ?? 'Code vérifié',
+        statusCode: response.statusCode!,
+        data: response.data,
+      );
+    } on DioException catch (e) {
+      return ApiResponse(
+        message: e.response?.data['message'] ?? 'Code invalide',
+        statusCode: e.response?.statusCode ?? 500,
+        data: e.response?.data,
+      );
+    }
+  }
+
+  Future<ApiResponse> resetPassword(String email, String code) async {
+    try {
+      final response = await AppConstants.dio.post(
+        'reset-password',
+        data: {'email': email, 'code': code},
+      );
+      return ApiResponse(
+        message: response.data["message"] ?? 'Mot de passe réinitialisé',
+        statusCode: response.statusCode!,
+        data: response.data,
+      );
+    } on DioException catch (e) {
+      return ApiResponse(
+        message:
+            e.response?.data['message'] ?? 'Erreur lors de la réinitialisation',
+        statusCode: e.response?.statusCode ?? 500,
+        data: e.response?.data,
+      );
+    }
+  }
 }

@@ -462,9 +462,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.indigo.shade800,
-            Colors.indigo.shade600,
-            Colors.indigo.shade400,
+            Colors.black,
+            Colors.black87,
+            Colors.black54,
           ],
         ),
         borderRadius: BorderRadius.circular(24),

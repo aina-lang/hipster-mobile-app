@@ -2,75 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:async';
 import 'package:pinput/pinput.dart';
 import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
 import 'package:tiko_tiko/shared/widgets/custom_button.dart';
 import 'package:tiko_tiko/shared/widgets/custom_snackbar.dart';
 
-class OtpVerificationScreen extends StatefulWidget {
+class ResetOtpScreen extends StatefulWidget {
   final String email;
-  const OtpVerificationScreen({super.key, required this.email});
+  const ResetOtpScreen({super.key, required this.email});
 
   @override
-  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  State<ResetOtpScreen> createState() => _ResetOtpScreenState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+class _ResetOtpScreenState extends State<ResetOtpScreen> {
   final _pinController = TextEditingController();
   final _focusNode = FocusNode();
-  int _resendCountdown = 60;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _startResendTimer();
-  }
-
-  void _startResendTimer() {
-    setState(() => _resendCountdown = 60);
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_resendCountdown == 0) {
-        timer.cancel();
-      } else {
-        setState(() => _resendCountdown--);
-      }
-    });
-  }
 
   @override
   void dispose() {
-    _timer?.cancel();
     _pinController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  void _onVerify([String? code]) {
-    final pin = code ?? _pinController.text;
-    if (pin.length < 6) {
-      AppSnackBar.show(
-        context,
-        'Veuillez entrer le code complet',
-        type: SnackType.error,
-      );
-      return;
-    }
-    context.read<AuthBloc>().add(AuthVerifyOtpRequested(widget.email, pin));
-  }
-
-  void _resendCode() {
-    if (_resendCountdown == 0) {
-      context.read<AuthBloc>().add(AuthResendOtpRequested(widget.email));
-      _startResendTimer();
-      AppSnackBar.show(
-        context,
-        'Un nouveau code a été envoyé',
-        type: SnackType.success,
-      );
-    }
+  void _onVerify(String pin) {
+    if (pin.length < 6) return;
+    context.read<AuthBloc>().add(
+      AuthResetPasswordRequested(email: widget.email, code: pin),
+    );
   }
 
   @override
@@ -122,13 +82,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       ),
     );
 
-    final submittedPinTheme = defaultPinTheme.copyWith(
-      decoration: defaultPinTheme.decoration!.copyWith(
-        color: Colors.grey[50],
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-    );
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -139,7 +92,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             Icons.arrow_back_ios_new_rounded,
             color: Colors.black,
           ),
-          onPressed: () => context.go('/login'),
+          onPressed: () => context.pop(),
         ),
       ),
       body: BlocConsumer<AuthBloc, AuthState>(
@@ -147,15 +100,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           if (state is AuthFailure) {
             AppSnackBar.show(context, state.message, type: SnackType.error);
             _pinController.clear();
-          } else if (state is AuthAuthenticated) {
+          } else if (state is AuthPasswordResetSuccess) {
             AppSnackBar.show(
               context,
-              'Vérification réussie ! Bienvenue.',
+              'Mot de passe réinitialisé. Vérifiez vos emails.',
               type: SnackType.success,
             );
-            context.go('/client/dashboard');
-          } else if (state is AuthInitial) {
-            // Handling potential navigate back to login loops if strict
+            context.go('/login');
           }
         },
         builder: (context, state) {
@@ -194,7 +145,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     text: TextSpan(
                       style: TextStyle(color: Colors.grey[600], fontSize: 16),
                       children: [
-                        const TextSpan(text: 'Nous avons envoyé un code à\n'),
+                        const TextSpan(text: 'Entrez le code envoyé à\n'),
                         TextSpan(
                           text: widget.email,
                           style: const TextStyle(
@@ -214,21 +165,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     focusNode: _focusNode,
                     defaultPinTheme: defaultPinTheme,
                     focusedPinTheme: focusedPinTheme,
-                    submittedPinTheme: submittedPinTheme,
-                    onCompleted: (pin) => _onVerify(pin),
+                    onCompleted: _onVerify,
                     pinputAutovalidateMode: PinputAutovalidateMode.onSubmit,
                     showCursor: true,
-                    cursor: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 9),
-                          width: 22,
-                          height: 1,
-                          color: Colors.black,
-                        ),
-                      ],
-                    ),
                   ),
 
                   const SizedBox(height: 48),
@@ -249,29 +188,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     child: CustomButton(
                       text: "Vérifier",
                       isLoading: state is AuthLoading,
-                      onPressed: () => _onVerify(),
+                      onPressed: () => _onVerify(_pinController.text),
                       height: 56,
                       borderRadius: 14,
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  TextButton(
-                    onPressed: _resendCountdown == 0 ? _resendCode : null,
-                    style: TextButton.styleFrom(foregroundColor: Colors.black),
-                    child: Text(
-                      _resendCountdown == 0
-                          ? 'Renvoyer le code'
-                          : 'Renvoyer le code dans ${_resendCountdown}s',
-                      style: TextStyle(
-                        color: _resendCountdown == 0
-                            ? Colors
-                                  .black // Black for active
-                            : Colors.grey,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
                     ),
                   ),
                 ],

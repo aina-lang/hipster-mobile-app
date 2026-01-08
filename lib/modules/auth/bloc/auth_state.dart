@@ -53,3 +53,12 @@ class AuthEmailChangeSuccess extends AuthState {
   @override
   List<Object?> get props => [message];
 }
+
+class AuthResetOtpSent extends AuthState {
+  final String email;
+  const AuthResetOtpSent(this.email);
+  @override
+  List<Object?> get props => [email];
+}
+
+class AuthPasswordResetSuccess extends AuthState {}

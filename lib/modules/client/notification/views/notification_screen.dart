@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:tiko_tiko/shared/blocs/notification/notification_bloc.dart';
 import 'package:tiko_tiko/shared/models/notification_model.dart';
 import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
+import 'package:tiko_tiko/shared/services/file_service.dart';
+import 'package:tiko_tiko/shared/widgets/custom_snackbar.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -15,169 +20,150 @@ class _NotificationScreenState extends State<NotificationScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String searchQuery = "";
-  String sortBy = "date_desc";
+
+  // Categories derived from model helpers
+  final List<String> _categories = [
+    "Tout",
+    "Devis",
+    "Factures",
+    "Tickets",
+    "Projets",
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: _categories.length, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   List<NotificationModel> _filterNotifications(
     List<NotificationModel> items,
-    String type,
+    String category,
   ) {
-    // Basic mapping for mock tabs
     return items.where((n) {
+      // 1. Search Filter
       if (searchQuery.isNotEmpty &&
-          !n.title.toLowerCase().contains(searchQuery.toLowerCase())) {
+          !n.title.toLowerCase().contains(searchQuery.toLowerCase()) &&
+          !n.message.toLowerCase().contains(searchQuery.toLowerCase())) {
         return false;
       }
-      // Simple type matching (case insensitive or partial)
-      if (type == "Devis")
-        return n.type?.toLowerCase().contains("devis") ??
-            n.title.toLowerCase().contains("devis");
-      if (type == "Factures")
-        return n.type?.toLowerCase().contains("facture") ??
-            n.title.toLowerCase().contains("facture");
-      if (type == "Tickets")
-        return n.type?.toLowerCase().contains("ticket") ??
-            n.title.toLowerCase().contains("ticket");
-      if (type == "Projets")
-        return n.type?.toLowerCase().contains("projet") ??
-            n.title.toLowerCase().contains("projet") ||
-                (n.type?.contains("project") ?? false);
+
+      // 2. Category Filter
+      if (category == "Tout") return true;
+      if (category == "Devis") return n.category == 'devis';
+      if (category == "Factures") return n.category == 'facture';
+      if (category == "Tickets") return n.category == 'ticket';
+      if (category == "Projets") return n.category == 'projet';
+
       return true;
-    }).toList()..sort((a, b) {
-      if (sortBy == "date_desc") return b.createdAt.compareTo(a.createdAt);
-      return a.createdAt.compareTo(b.createdAt);
-    });
+    }).toList();
+  }
+
+  void _markAllAsRead(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthAuthenticated) {
+      context.read<NotificationBloc>().add(
+        NotificationMarkAllAsRead(authState.user.id),
+      );
+      AppSnackBar.show(
+        context,
+        "Toutes les notifications ont été marquées comme lues",
+        position: SnackPosition.top,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: Colors.white,
       body: BlocBuilder<NotificationBloc, NotificationState>(
         builder: (context, state) {
           List<NotificationModel> allNotifications = [];
+
           if (state is NotificationLoaded) {
             allNotifications = state.notifications;
           }
 
-          return RefreshIndicator(
-            color: cs.primary,
-            onRefresh: () async {
-              final authState = context.read<AuthBloc>().state;
-              if (authState is AuthAuthenticated) {
-                context.read<NotificationBloc>().add(
-                  NotificationLoadRequested(
-                    userId: authState.user.id,
-                    refresh: true,
+          final unreadCount = allNotifications.where((n) => !n.isRead).length;
+
+          return NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverAppBar(
+                title: Text(
+                  "Notifications",
+                  style: textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
                   ),
-                );
-              }
-            },
-            child: CustomScrollView(
-              slivers: [
-                /// --- AppBar ---
-                SliverAppBar(
-                  pinned: true,
-                  expandedHeight: 80,
-                  automaticallyImplyLeading: true, // Show back button
-                  backgroundColor: cs.surface,
-                  title: const Text(
-                    "Notifications",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  actions: [
-                    PopupMenuButton<String>(
-                      tooltip: "Trier",
-                      icon: Icon(Icons.sort_rounded, color: cs.primary),
-                      onSelected: (value) => setState(() => sortBy = value),
-                      itemBuilder: (context) => const [
-                        PopupMenuItem(
-                          value: "date_desc",
-                          child: Text("Plus récentes"),
-                        ),
-                        PopupMenuItem(
-                          value: "date_asc",
-                          child: Text("Plus anciennes"),
-                        ),
-                      ],
+                ),
+                centerTitle: false,
+                pinned: true,
+                backgroundColor: Colors.white,
+                surfaceTintColor: Colors.transparent,
+                actions: [
+                  if (unreadCount > 0)
+                    IconButton(
+                      tooltip: "Tout marquer comme lu",
+                      icon: const Icon(
+                        Icons.done_all_rounded,
+                        color: Colors.black,
+                      ),
+                      onPressed: () => _markAllAsRead(context),
                     ),
-                  ],
-                ),
-
-                /// --- Barre de recherche ---
-                SliverPersistentHeader(
-                  floating: true,
-                  delegate: _SearchBarDelegate(
-                    onChanged: (value) => setState(() => searchQuery = value),
+                ],
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(60),
+                  child: Container(
+                    height: 50,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _categories.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        return _buildCategoryChip(index, cs);
+                      },
+                    ),
                   ),
                 ),
-
-                /// --- Onglets par type ---
-                SliverFillRemaining(
-                  hasScrollBody: true,
-                  child: Column(
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: TabBar(
-                          controller: _tabController,
-                          indicator: ShapeDecoration(
-                            color: cs.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          labelColor: Colors.white,
-                          unselectedLabelColor: cs.onSurface.withOpacity(0.7),
-                          tabs: const [
-                            Tab(text: "Devis"),
-                            Tab(text: "Factures"),
-                            Tab(text: "Tickets"),
-                            Tab(text: "Projets"),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildList(
-                              _filterNotifications(allNotifications, "Devis"),
-                              cs,
-                            ),
-                            _buildList(
-                              _filterNotifications(
-                                allNotifications,
-                                "Factures",
-                              ),
-                              cs,
-                            ),
-                            _buildList(
-                              _filterNotifications(allNotifications, "Tickets"),
-                              cs,
-                            ),
-                            _buildList(
-                              _filterNotifications(allNotifications, "Projets"),
-                              cs,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
+            ],
+            body: RefreshIndicator(
+              onRefresh: () async {
+                final authState = context.read<AuthBloc>().state;
+                if (authState is AuthAuthenticated) {
+                  context.read<NotificationBloc>().add(
+                    NotificationLoadRequested(
+                      userId: authState.user.id,
+                      refresh: true,
+                    ),
+                  );
+                }
+              },
+              color: Colors.black,
+              child: TabBarView(
+                controller: _tabController,
+                physics:
+                    const NeverScrollableScrollPhysics(), // Controlled by chips
+                children: _categories.map((category) {
+                  final filtered = _filterNotifications(
+                    allNotifications,
+                    category,
+                  );
+                  return _buildNotificationList(filtered, cs);
+                }).toList(),
+              ),
             ),
           );
         },
@@ -185,119 +171,349 @@ class _NotificationScreenState extends State<NotificationScreen>
     );
   }
 
-  Widget _buildList(List<NotificationModel> items, ColorScheme cs) {
-    if (items.isEmpty) {
-      return Center(
-        child: Text(
-          "Aucune notification",
-          style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length,
-      itemBuilder: (context, i) {
-        final notif = items[i];
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: notif.isRead
-                ? cs.surfaceContainerHighest.withOpacity(0.4)
-                : cs.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+  Widget _buildCategoryChip(int index, ColorScheme cs) {
+    return AnimatedBuilder(
+      animation: _tabController.animation!,
+      builder: (context, child) {
+        final isSelected = _tabController.index == index;
+        return FilterChip(
+          label: Text(_categories[index]),
+          selected: isSelected,
+          onSelected: (_) => _tabController.animateTo(index),
+          backgroundColor: Colors.grey.shade100,
+          selectedColor: Colors.black,
+          labelStyle: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
-          child: ListTile(
-            leading: Icon(_getIcon(notif.type ?? ""), color: cs.primary),
-            title: Text(
-              notif.title,
-              style: TextStyle(
-                fontWeight: notif.isRead ? FontWeight.w500 : FontWeight.bold,
-                color: cs.onSurface,
-              ),
-            ),
-            subtitle: Text(
-              _formatDate(notif.createdAt),
-              style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
-            ),
-            trailing: !notif.isRead
-                ? Icon(Icons.circle, size: 10, color: cs.primary)
-                : null,
-            onTap: () {
-              if (!notif.isRead) {
-                context.read<NotificationBloc>().add(
-                  NotificationMarkAsRead(notif.id),
-                );
-              }
-            },
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide.none,
           ),
+          showCheckmark: false,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         );
       },
     );
   }
 
-  IconData _getIcon(String type) {
-    final t = type.toLowerCase();
-    if (t.contains("devis")) return Icons.description_outlined;
-    if (t.contains("facture")) return Icons.receipt_long_outlined;
-    if (t.contains("ticket")) return Icons.support_agent_outlined;
-    if (t.contains("projet") || t.contains("project"))
-      return Icons.folder_open_outlined;
-    return Icons.notifications_none;
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    if (date.day == now.day && date.month == now.month) {
-      return "Aujourd’hui • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-    }
-    return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-  }
-}
-
-class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
-  final ValueChanged<String> onChanged;
-  _SearchBarDelegate({required this.onChanged});
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      color: cs.surface,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(12),
+  Widget _buildNotificationList(
+    List<NotificationModel> notifications,
+    ColorScheme cs,
+  ) {
+    if (notifications.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.notifications_off_outlined,
+              size: 64,
+              color: Colors.grey.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Aucune notification",
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
-        child: TextField(
-          decoration: const InputDecoration(
-            hintText: "Rechercher une notification...",
-            prefixIcon: Icon(Icons.search),
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.all(14),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      itemCount: notifications.length,
+      itemBuilder: (context, index) {
+        final notif = notifications[index];
+        return _buildNotificationCard(context, notif, cs)
+            .animate()
+            .fadeIn(duration: 300.ms, delay: (50 * index).ms)
+            .slideX(begin: 0.1, duration: 300.ms);
+      },
+    );
+  }
+
+  Widget _buildNotificationCard(
+    BuildContext context,
+    NotificationModel notif,
+    ColorScheme cs,
+  ) {
+    final isUnread = !notif.isRead;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isUnread ? Colors.blue.shade50.withOpacity(0.5) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          onChanged: onChanged,
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            if (isUnread) {
+              context.read<NotificationBloc>().add(
+                NotificationMarkAsRead(notif.id),
+              );
+            }
+            // Navigate based on type
+            _handleNavigation(context, notif);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Icon Container
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _getCategoryColor(
+                          notif.category,
+                        ).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _getCategoryIcon(notif.category),
+                        color: _getCategoryColor(notif.category),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    // Content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  notif.title,
+                                  style: TextStyle(
+                                    fontWeight: isUnread
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    fontSize: 15,
+                                    color: Colors.black87,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (isUnread)
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.redAccent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            notif.message,
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _formatDate(notif.createdAt),
+                            style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Contextual Action Button
+                if (_hasAction(notif)) ...[
+                  const SizedBox(height: 16),
+                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () {
+                      if (isUnread) {
+                        context.read<NotificationBloc>().add(
+                          NotificationMarkAsRead(notif.id),
+                        );
+                      }
+                      _handleAction(context, notif);
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 6,
+                        horizontal: 4,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _getActionLabel(notif),
+                            style: TextStyle(
+                              color: _getCategoryColor(notif.category),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 14,
+                            color: _getCategoryColor(notif.category),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  @override
-  double get maxExtent => 72;
-  @override
-  double get minExtent => 72;
-  @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
-      false;
+  // --- Logic Helpers ---
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'devis':
+        return Colors.teal;
+      case 'facture':
+        return Colors.indigo;
+      case 'ticket':
+        return Colors.orange;
+      case 'projet':
+        return Colors.blueGrey;
+      default:
+        return Colors.black;
+    }
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'devis':
+        return Icons.receipt_long;
+      case 'facture':
+        return Icons.request_quote_outlined;
+      case 'ticket':
+        return Icons.support_agent;
+      case 'projet':
+        return Icons.folder_open;
+      default:
+        return Icons.notifications_none;
+    }
+  }
+
+  // --- Action Logic ---
+
+  bool _hasAction(NotificationModel notif) {
+    if (notif.category == 'devis' && notif.invoiceId != null) return true;
+    if (notif.category == 'facture' && notif.invoiceId != null) return true;
+    if (notif.category == 'ticket') return true; // Always navigate to tickets
+    if (notif.category == 'projet' && notif.projectId != null) return true;
+    return false;
+  }
+
+  String _getActionLabel(NotificationModel notif) {
+    switch (notif.category) {
+      case 'devis':
+        return "TÉLÉCHARGER LE DEVIS";
+      case 'facture':
+        return "TÉLÉCHARGER LA FACTURE";
+      case 'ticket':
+        return "VOIR LE TICKET";
+      case 'projet':
+        return "VOIR LE PROJET";
+      default:
+        return "VOIR";
+    }
+  }
+
+  void _handleNavigation(BuildContext context, NotificationModel notif) {
+    // Default navigation on card tap (can be same as action or less specific)
+    if (notif.category == 'ticket') {
+      context.push('/client/tickets');
+    } else if (notif.category == 'projet' && notif.projectId != null) {
+      context.push('/client/projects/${notif.projectId}');
+    }
+  }
+
+  Future<void> _handleAction(
+    BuildContext context,
+    NotificationModel notif,
+  ) async {
+    switch (notif.category) {
+      case 'devis':
+      case 'facture':
+        if (notif.invoiceId != null) {
+          AppSnackBar.show(
+            context,
+            "Téléchargement du document...",
+            position: SnackPosition.top,
+          );
+          try {
+            await FileService().downloadAndOpenFile(
+              '/invoices/${notif.invoiceId}/pdf',
+              'document_${notif.invoiceId}.pdf',
+            );
+          } catch (e) {
+            AppSnackBar.show(
+              context,
+              "Erreur lors du téléchargement: $e",
+              type: SnackType.error,
+            );
+          }
+        }
+        break;
+      case 'ticket':
+        context.push('/client/tickets');
+        // Use ticketId if we have a ticket detail route, otherwise general list
+        break;
+      case 'projet':
+        if (notif.projectId != null) {
+          context.push('/client/projects/${notif.projectId}');
+        }
+        break;
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    if (date.day == DateTime.now().day) {
+      return "Aujourd'hui, ${DateFormat('HH:mm').format(date)}";
+    }
+    return DateFormat('dd MMM yyyy, HH:mm', 'fr_FR').format(date);
+  }
 }

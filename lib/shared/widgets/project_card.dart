@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tiko_tiko/shared/models/project_model.dart';
 import 'package:tiko_tiko/shared/widgets/custom_snackbar.dart';
 import '../utils/status_helper.dart';
+import '../services/file_service.dart';
+import '../../modules/client/dashboard/services/dashboard_repository.dart';
+import '../utils/ui_helpers.dart';
 
 class ProjectCard extends StatelessWidget {
   const ProjectCard({super.key, required this.project, required this.index});
@@ -13,14 +18,48 @@ class ProjectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = StatusHelper.getStatusColor(project.status);
 
-    return Dismissible(
+    return Slidable(
       key: Key("${project.id}_${project.name}"),
-      direction: DismissDirection.endToStart,
-      background: _buildRightActions(),
-      confirmDismiss: (direction) async {
-        _showRightActionDialog(context, project, index);
-        return false;
-      },
+      endActionPane: ActionPane(
+        motion: const DrawerMotion(),
+        extentRatio: 0.8,
+        children: [
+          SlidableAction(
+            onPressed: (ctx) => _handlePdfAction(ctx),
+            backgroundColor: Colors.blueGrey.shade700,
+            foregroundColor: Colors.white,
+            icon: Icons.picture_as_pdf,
+            label: 'PDF',
+            borderRadius: const BorderRadius.horizontal(
+              left: Radius.circular(8),
+            ),
+          ),
+          SlidableAction(
+            onPressed: (ctx) => _handleQuoteAction(ctx),
+            backgroundColor: Colors.teal,
+            foregroundColor: Colors.white,
+            icon: Icons.receipt_long,
+            label: 'Devis',
+          ),
+          SlidableAction(
+            onPressed: (ctx) => _handleInvoiceAction(ctx),
+            backgroundColor: Colors.indigo,
+            foregroundColor: Colors.white,
+            icon: Icons.request_quote_outlined,
+            label: 'Facture',
+          ),
+          SlidableAction(
+            onPressed: (ctx) => context.push('/client/tickets'),
+            backgroundColor: Colors.orangeAccent,
+            foregroundColor: Colors.white,
+            icon: Icons.support_agent,
+            label: 'Ticket',
+            borderRadius: const BorderRadius.horizontal(
+              right: Radius.circular(8),
+            ),
+          ),
+        ],
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -143,93 +182,66 @@ class ProjectCard extends StatelessWidget {
     );
   }
 
-  // === 🟪 FOND DROIT — 4 actions marketing client
-  Widget _buildRightActions() {
-    return Container(
-      color: Colors.grey.shade50,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade700,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.picture_as_pdf, color: Colors.white),
-                    SizedBox(height: 4),
-                    Text("PDF", style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: Colors.teal,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.receipt_long, color: Colors.white),
-                    SizedBox(height: 4),
-                    Text("Devis", style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: Colors.indigo,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.request_quote_outlined, color: Colors.white),
-                    SizedBox(height: 4),
-                    Text("Facture", style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: Colors.orangeAccent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.support_agent, color: Colors.white),
-                    SizedBox(height: 4),
-                    Text("Ticket", style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+  // --- Action Handlers ---
+
+  Future<void> _handlePdfAction(BuildContext ctx) async {
+    AppSnackBar.show(
+      ctx,
+      "Génération du rapport PDF...",
+      position: SnackPosition.top,
     );
+    try {
+      await FileService().downloadAndOpenFile(
+        '/projects/${project.id}/pdf',
+        'rapport_projet_${project.id}.pdf',
+      );
+    } catch (e) {
+      AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
+    }
+  }
+
+  Future<void> _handleQuoteAction(BuildContext ctx) async {
+    AppSnackBar.show(ctx, "Recherche du devis...", position: SnackPosition.top);
+    try {
+      final response = await DashboardRepository().getInvoices(
+        projectId: project.id,
+      );
+      final quote = response.firstWhere(
+        (i) => i.type == 'quote',
+        orElse: () => throw Exception("Aucun devis trouvé pour ce projet."),
+      );
+
+      await FileService().downloadAndOpenFile(
+        '/invoices/${quote.id}/pdf',
+        'devis_${quote.reference}.pdf',
+      );
+    } catch (e) {
+      AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
+    }
+  }
+
+  Future<void> _handleInvoiceAction(BuildContext ctx) async {
+    AppSnackBar.show(
+      ctx,
+      "Recherche de la facture...",
+      position: SnackPosition.top,
+    );
+    try {
+      final response = await DashboardRepository().getInvoices(
+        projectId: project.id,
+      );
+      final invoice = response.firstWhere(
+        (i) => i.type == 'invoice',
+        orElse: () => throw Exception("Aucune facture trouvée pour ce projet."),
+      );
+
+      await FileService().downloadAndOpenFile(
+        '/invoices/${invoice.id}/pdf',
+        'facture_${invoice.reference}.pdf',
+      );
+    } catch (e) {
+      AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
+    }
   }
 
   // === 🗂️ Dialogue droite
@@ -238,7 +250,7 @@ class ProjectCard extends StatelessWidget {
     ProjectModel project,
     int index,
   ) {
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       scrollControlDisabledMaxHeightRatio: 50,
       context: context,
       backgroundColor: Colors.white,
@@ -283,13 +295,21 @@ class ProjectCard extends StatelessWidget {
                 ),
                 title: const Text("Télécharger le rapport PDF"),
                 subtitle: const Text("Télécharger la synthèse du projet"),
-                onTap: () {
+                onTap: () async {
+                  Navigator.pop(ctx);
                   AppSnackBar.show(
                     ctx,
-                    "Téléchargement du PDF du projet '${project.name}'",
+                    "Génération du rapport PDF...",
                     position: SnackPosition.top,
                   );
-                  // TODO: implémenter le téléchargement PDF ici
+                  try {
+                    await FileService().downloadAndOpenFile(
+                      '/projects/${project.id}/pdf',
+                      'rapport_projet_${project.id}.pdf',
+                    );
+                  } catch (e) {
+                    AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
+                  }
                 },
               ),
 
@@ -298,16 +318,29 @@ class ProjectCard extends StatelessWidget {
                 leading: const Icon(Icons.receipt_long, color: Colors.teal),
                 title: const Text("Télécharger le devis"),
                 subtitle: const Text("Récupérer le devis en cours du projet"),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        "Téléchargement du devis du projet '${project.name}'",
-                      ),
-                    ),
+                  AppSnackBar.show(
+                    ctx,
+                    "Recherche du devis...",
+                    position: SnackPosition.top,
                   );
-                  // TODO: implémenter le téléchargement devis ici
+                  try {
+                    final response = await DashboardRepository().getInvoices(
+                      projectId: project.id,
+                    );
+                    final quote = response.firstWhere(
+                      (i) => i.type == 'quote',
+                      orElse: () => throw Exception("Aucun devis trouvé."),
+                    );
+
+                    await FileService().downloadAndOpenFile(
+                      '/invoices/${quote.id}/pdf',
+                      'devis_${quote.reference}.pdf',
+                    );
+                  } catch (e) {
+                    AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
+                  }
                 },
               ),
 
@@ -321,16 +354,29 @@ class ProjectCard extends StatelessWidget {
                 subtitle: const Text(
                   "Télécharger la dernière facture du projet",
                 ),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        "Téléchargement de la facture du projet '${project.name}'",
-                      ),
-                    ),
+                  AppSnackBar.show(
+                    ctx,
+                    "Recherche de la facture...",
+                    position: SnackPosition.top,
                   );
-                  // TODO: implémenter le téléchargement facture ici
+                  try {
+                    final response = await DashboardRepository().getInvoices(
+                      projectId: project.id,
+                    );
+                    final invoice = response.firstWhere(
+                      (i) => i.type == 'invoice',
+                      orElse: () => throw Exception("Aucune facture trouvée."),
+                    );
+
+                    await FileService().downloadAndOpenFile(
+                      '/invoices/${invoice.id}/pdf',
+                      'facture_${invoice.reference}.pdf',
+                    );
+                  } catch (e) {
+                    AppSnackBar.show(ctx, "Erreur: $e", type: SnackType.error);
+                  }
                 },
               ),
 
@@ -343,12 +389,7 @@ class ProjectCard extends StatelessWidget {
                 ),
                 onTap: () {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Ouverture du support client..."),
-                    ),
-                  );
-                  // TODO: rediriger vers l’écran de support/ticket
+                  context.push('/client/tickets');
                 },
               ),
 
@@ -359,7 +400,10 @@ class ProjectCard extends StatelessWidget {
                 subtitle: const Text("Accéder au détail complet"),
                 onTap: () {
                   Navigator.pop(ctx);
-                  // context.push('/projects/detail', extra: project);
+                  context.push(
+                    '/client/projects/${project.id}',
+                    extra: project,
+                  );
                 },
               ),
             ],

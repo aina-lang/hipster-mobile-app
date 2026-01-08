@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/utils/status_helper.dart';
+import '../../../../shared/utils/ui_helpers.dart';
 
 class TicketScreen extends StatefulWidget {
   const TicketScreen({super.key});
@@ -314,7 +315,7 @@ class _TicketScreenState extends State<TicketScreen> {
   ) {
     final cs = Theme.of(context).colorScheme;
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       backgroundColor: cs.surface,
       shape: const RoundedRectangleBorder(
