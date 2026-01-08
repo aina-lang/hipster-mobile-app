@@ -23,7 +23,7 @@ void main() async {
 
   // Initialize Stripe
   Stripe.publishableKey =
-      "pk_test_51...your_key_here..."; // TODO: Replace with real key from config
+      "pk_test_51SCdoeFivno0gXseuoYu1NyiROIxnSsMt7XYpOFnFdSt1twAvlCkTHOfCZSDTqPI5XDpIDupOsTTKvX62anb3cLb00gl5ceTPP";
   await Stripe.instance.applySettings();
 
   runApp(MyApp());
