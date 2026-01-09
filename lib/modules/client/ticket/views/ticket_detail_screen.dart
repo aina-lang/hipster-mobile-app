@@ -82,158 +82,219 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
           if (state is TicketDetailLoaded) {
             final isRejected = state.ticket.status == 'rejected';
-            return Column(
-              children: [
-                if (isRejected && state.ticket.rejectionReason != null)
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              color: Colors.red.shade700,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              "Ticket Refusé",
-                              style: TextStyle(
-                                color: Colors.red.shade900,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          state.ticket.rejectionReason!,
-                          style: TextStyle(
-                            color: Colors.red.shade900,
-                            fontSize: 14,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: state.messages.length,
-                    itemBuilder: (context, index) {
-                      final msg = state.messages[index];
-                      final isClient = msg.senderType == 'client';
-
-                      return Align(
-                        alignment: isClient
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          padding: const EdgeInsets.all(12),
-                          constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isClient
-                                ? Colors.black
-                                : Colors.grey.shade100,
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(16),
-                              topRight: const Radius.circular(16),
-                              bottomLeft: Radius.circular(isClient ? 16 : 0),
-                              bottomRight: Radius.circular(isClient ? 0 : 16),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isRejected && state.ticket.rejectionReason != null)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 24),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              Text(
-                                msg.content,
-                                style: TextStyle(
-                                  color: isClient
-                                      ? Colors.white
-                                      : Colors.black87,
-                                  fontSize: 15,
-                                ),
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.red.shade700,
+                                size: 20,
                               ),
-                              const SizedBox(height: 4),
-                              Align(
-                                alignment: Alignment.bottomRight,
-                                child: Text(
-                                  _formatTime(msg.createdAt),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: isClient
-                                        ? Colors.white70
-                                        : Colors.black45,
-                                  ),
+                              const SizedBox(width: 8),
+                              Text(
+                                "Ticket Refusé",
+                                style: TextStyle(
+                                  color: Colors.red.shade900,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      );
-                    },
+                          const SizedBox(height: 8),
+                          Text(
+                            state.ticket.rejectionReason!,
+                            style: TextStyle(
+                              color: Colors.red.shade900,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Ticket Header
+                  Text(
+                    state.ticket.subject,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                SafeArea(
-                  child: Container(
-                    margin: const EdgeInsets.all(12),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  const SizedBox(height: 16),
+
+                  // Statut & Priorité
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(
+                            state.ticket.status,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _getStatusColor(
+                              state.ticket.status,
+                            ).withOpacity(0.2),
+                          ),
+                        ),
+                        child: Text(
+                          state.ticket.status.toUpperCase(),
+                          style: TextStyle(
+                            color: _getStatusColor(state.ticket.status),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getPriorityColor(
+                            state.ticket.priority,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _getPriorityColor(
+                              state.ticket.priority,
+                            ).withOpacity(0.2),
+                          ),
+                        ),
+                        child: Text(
+                          state.ticket.priority.toUpperCase(),
+                          style: TextStyle(
+                            color: _getPriorityColor(state.ticket.priority),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Description Label
+                  Text(
+                    "Description",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Description Content
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey.shade200),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            decoration: const InputDecoration(
-                              hintText: "Écrire un message...",
-                              border: InputBorder.none,
-                            ),
-                            onSubmitted: (_) => _sendMessage(),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _sendMessage,
-                          icon: const Icon(
-                            Icons.send_rounded,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      state.ticket.description,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        height: 1.5,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 24),
+
+                  // Date
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        size: 16,
+                        color: Colors.grey.shade500,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Créé le ${_formatDate(state.ticket.createdAt)} à ${_formatTime(state.ticket.createdAt)}",
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             );
           }
-
           return const SizedBox.shrink();
         },
       ),
     );
   }
 
+  String _formatDate(DateTime date) {
+    return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
+  }
+
   String _formatTime(DateTime date) {
     final h = date.hour.toString().padLeft(2, '0');
     final m = date.minute.toString().padLeft(2, '0');
     return "$h:$m";
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'open':
+        return Colors.blue;
+      case 'in_progress':
+        return Colors.orange;
+      case 'resolved':
+      case 'closed':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getPriorityColor(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      case 'low':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 }

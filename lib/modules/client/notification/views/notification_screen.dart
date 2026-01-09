@@ -489,9 +489,12 @@ class _NotificationScreenState extends State<NotificationScreen>
   }
 
   void _handleNavigation(BuildContext context, NotificationModel notif) {
-    // Default navigation on card tap (can be same as action or less specific)
     if (notif.category == 'ticket') {
-      context.push('/client/tickets');
+      if (notif.data?['ticketId'] != null) {
+        context.push('/client/ticket/${notif.data!['ticketId']}');
+      } else {
+        context.push('/client/tickets');
+      }
     } else if (notif.category == 'projet' && notif.projectId != null) {
       context.push('/client/projects/${notif.projectId}');
     }
@@ -525,8 +528,11 @@ class _NotificationScreenState extends State<NotificationScreen>
         }
         break;
       case 'ticket':
-        context.push('/client/tickets');
-        // Use ticketId if we have a ticket detail route, otherwise general list
+        if (notif.data?['ticketId'] != null) {
+          context.push('/client/ticket/${notif.data!['ticketId']}');
+        } else {
+          context.push('/client/tickets');
+        }
         break;
       case 'projet':
         if (notif.projectId != null) {
