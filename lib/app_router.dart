@@ -168,7 +168,10 @@ class AppRouter {
 
         GoRoute(
           path: '/client/projects/new',
-          builder: (context, state) => const ProjectSubmitScreen(),
+          builder: (context, state) {
+            final project = state.extra as ProjectModel?;
+            return ProjectSubmitScreen(project: project);
+          },
         ),
 
         GoRoute(

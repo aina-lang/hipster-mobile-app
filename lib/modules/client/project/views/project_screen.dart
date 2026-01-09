@@ -42,11 +42,20 @@ class _ProjectScreenState extends State<ProjectScreen>
   List<dynamic> _filterProjects(List<dynamic> projects, bool isPendingTab) {
     if (isPendingTab) {
       return projects
-          .where((p) => p.status == 'pending' || p.status == 'refused')
+          .where(
+            (p) =>
+                (p.status == 'pending' || p.status == 'refused') &&
+                p.status != 'canceled',
+          )
           .toList();
     } else {
       return projects
-          .where((p) => p.status != 'pending' && p.status != 'refused')
+          .where(
+            (p) =>
+                p.status != 'pending' &&
+                p.status != 'refused' &&
+                p.status != 'canceled',
+          )
           .toList();
     }
   }

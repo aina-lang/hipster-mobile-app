@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:tiko_tiko/shared/models/project_model.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_bloc.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_event.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_state.dart';
 import 'package:tiko_tiko/shared/widgets/custom_button.dart';
 
 class ProjectSubmitScreen extends StatefulWidget {
-  const ProjectSubmitScreen({super.key});
+  final ProjectModel? project;
+  const ProjectSubmitScreen({super.key, this.project});
 
   @override
   State<ProjectSubmitScreen> createState() => _ProjectSubmitScreenState();
@@ -17,13 +19,25 @@ class ProjectSubmitScreen extends StatefulWidget {
 
 class _ProjectSubmitScreenState extends State<ProjectSubmitScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
-  final _budgetController = TextEditingController();
+  late final TextEditingController _nameController;
+  late final TextEditingController _descController;
+  late final TextEditingController _budgetController;
 
   DateTime? _startDate;
   DateTime? _endDate;
   List<PlatformFile> _selectedFiles = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.project?.name);
+    _descController = TextEditingController(text: widget.project?.description);
+    _budgetController = TextEditingController(
+      text: widget.project != null ? widget.project!.budget.toStringAsFixed(0) : '',
+    );
+    _startDate = widget.project?.startDate;
+    _endDate = widget.project?.endDate;
+  }
 
   @override
   void dispose() {
@@ -111,20 +125,33 @@ class _ProjectSubmitScreenState extends State<ProjectSubmitScreen> {
 
       final budget = double.tryParse(_budgetController.text);
 
-      context.read<ProjectBloc>().add(
-        ProjectSubmitRequested(
-          name: _nameController.text,
-          description: _descController.text,
-          startDate: _startDate!,
-          endDate: _endDate!,
-          budget: budget,
-          files: _selectedFiles
-              .map((f) => f.path)
-              .where((path) => path != null)
-              .cast<String>()
-              .toList(),
-        ),
-      );
+      if (widget.project != null) {
+        context.read<ProjectBloc>().add(
+          ProjectUpdateRequested(
+            id: widget.project!.id,
+            name: _nameController.text,
+            description: _descController.text,
+            startDate: _startDate,
+            endDate: _endDate,
+            budget: budget,
+          ),
+        );
+      } else {
+        context.read<ProjectBloc>().add(
+          ProjectSubmitRequested(
+            name: _nameController.text,
+            description: _descController.text,
+            startDate: _startDate!,
+            endDate: _endDate!,
+            budget: budget,
+            files: _selectedFiles
+                .map((f) => f.path)
+                .where((path) => path != null)
+                .cast<String>()
+                .toList(),
+          ),
+        );
+      }
     }
   }
 
@@ -139,17 +166,21 @@ class _ProjectSubmitScreenState extends State<ProjectSubmitScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => context.pop(),
         ),
-        title: const Text(
-          "Nouveau Projet",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        title: Text(
+          widget.project != null ? "Modifier le Projet" : "Nouveau Projet",
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
       ),
       body: BlocListener<ProjectBloc, ProjectState>(
         listener: (context, state) {
           if (state is ProjectSubmitSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Votre demande de projet a été envoyée !'),
+              SnackBar(
+                content: Text(
+                  widget.project != null
+                      ? 'Projet mis à jour avec succès !'
+                      : 'Votre demande de projet a été envoyée !',
+                ),
                 backgroundColor: Colors.green,
               ),
             );
@@ -423,7 +454,9 @@ class _ProjectSubmitScreenState extends State<ProjectSubmitScreen> {
                 BlocBuilder<ProjectBloc, ProjectState>(
                   builder: (context, state) {
                     return CustomButton(
-                      text: "Envoyer la demande",
+                      text: widget.project != null
+                          ? "Mettre à jour"
+                          : "Envoyer la demande",
                       isLoading: state is ProjectSubmitInProgress,
                       onPressed: state is ProjectSubmitInProgress
                           ? null

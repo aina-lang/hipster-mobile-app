@@ -300,10 +300,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // ---------------- PROJECT TIMELINE ----------------
   Widget _buildProjectTimeline(List<ProjectModel> projects) {
+    // Filter to show only 3 levels: Pending, In Progress (planned/in_progress/on_hold), and Completed
+    // Exclude refused and canceled projects from primary dashboard view
+    final filteredProjects = projects.where((p) {
+      final s = p.status.toLowerCase();
+      return s == 'pending' ||
+          s == 'planned' ||
+          s == 'in_progress' ||
+          s == 'on_hold' ||
+          s == 'completed';
+    }).toList();
+
     // Only show top 3 recent projects
-    final recentProjects = projects.length > 3
-        ? projects.sublist(0, 3)
-        : projects;
+    final recentProjects = filteredProjects.length > 3
+        ? filteredProjects.sublist(0, 3)
+        : filteredProjects;
 
     return Column(
       children: recentProjects.asMap().entries.map((entry) {

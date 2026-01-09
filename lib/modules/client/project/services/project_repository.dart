@@ -94,4 +94,44 @@ class ProjectRepository {
       return null;
     }
   }
+
+  Future<bool> updateProject({
+    required int id,
+    String? name,
+    String? description,
+    DateTime? startDate,
+    DateTime? endDate,
+    double? budget,
+    String? status,
+  }) async {
+    try {
+      final response = await _dio.patch(
+        '/projects/$id',
+        data: {
+          if (name != null) 'name': name,
+          if (description != null) 'description': description,
+          if (startDate != null) 'start_date': startDate.toIso8601String(),
+          if (endDate != null) 'end_date': endDate.toIso8601String(),
+          if (budget != null) 'budget': budget,
+          if (status != null) 'status': status,
+        },
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error updating project $id: $e');
+      return false;
+    }
+  }
+
+  Future<bool> cancelProject(int id) async {
+    try {
+      final response = await _dio.patch(
+        '/projects/$id/cancel', // ✅ Use dedicated endpoint
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error cancelling project $id: $e');
+      return false;
+    }
+  }
 }

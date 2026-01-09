@@ -50,5 +50,42 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         emit(ProjectSubmitFailure("Erreur: $e"));
       }
     });
+
+    on<ProjectUpdateRequested>((event, emit) async {
+      emit(ProjectSubmitInProgress());
+      try {
+        final success = await repository.updateProject(
+          id: event.id,
+          name: event.name,
+          description: event.description,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          budget: event.budget,
+          status: event.status,
+        );
+
+        if (success) {
+          emit(ProjectSubmitSuccess());
+          add(ProjectLoadRequested(refresh: true));
+        } else {
+          emit(ProjectSubmitFailure("Erreur lors de la mise à jour"));
+        }
+      } catch (e) {
+        emit(ProjectSubmitFailure("Erreur: $e"));
+      }
+    });
+
+    on<ProjectCancelRequested>((event, emit) async {
+      try {
+        final success = await repository.cancelProject(event.id);
+        if (success) {
+          add(ProjectLoadRequested(refresh: true));
+        } else {
+          emit(ProjectFailure("Erreur lors de l'annulation"));
+        }
+      } catch (e) {
+        emit(ProjectFailure("Erreur: $e"));
+      }
+    });
   }
 }

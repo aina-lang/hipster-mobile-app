@@ -6,6 +6,9 @@ import 'package:tiko_tiko/shared/widgets/custom_snackbar.dart';
 import '../utils/status_helper.dart';
 import '../services/file_service.dart';
 import '../../modules/client/dashboard/services/dashboard_repository.dart';
+import 'package:tiko_tiko/modules/client/project/bloc/project_bloc.dart';
+import 'package:tiko_tiko/modules/client/project/bloc/project_event.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../utils/ui_helpers.dart';
 
 class ProjectCard extends StatelessWidget {
@@ -18,46 +21,76 @@ class ProjectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = StatusHelper.getStatusColor(project.status);
 
+    final isPending = project.status.toLowerCase() == 'pending';
+    final isRefused = project.status.toLowerCase() == 'refused';
+    final isStaged = isPending || isRefused;
+
     return Slidable(
       key: Key("${project.id}_${project.name}"),
       endActionPane: ActionPane(
         motion: const DrawerMotion(),
-        extentRatio: 0.8,
+        extentRatio: isStaged ? 0.3 : 0.8,
         children: [
-          SlidableAction(
-            onPressed: (ctx) => _handlePdfAction(ctx),
-            backgroundColor: Colors.blueGrey.shade700,
-            foregroundColor: Colors.white,
-            icon: Icons.picture_as_pdf,
-            label: 'PDF',
-            borderRadius: const BorderRadius.horizontal(
-              left: Radius.circular(8),
+          if (isPending)
+            SlidableAction(
+              onPressed: (ctx) => _handleCancelAction(ctx),
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              icon: Icons.cancel_outlined,
+              label: 'ANNULER',
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(8),
+              ),
             ),
-          ),
-          SlidableAction(
-            onPressed: (ctx) => _handleQuoteAction(ctx),
-            backgroundColor: Colors.teal,
-            foregroundColor: Colors.white,
-            icon: Icons.receipt_long,
-            label: 'Devis',
-          ),
-          SlidableAction(
-            onPressed: (ctx) => _handleInvoiceAction(ctx),
-            backgroundColor: Colors.indigo,
-            foregroundColor: Colors.white,
-            icon: Icons.request_quote_outlined,
-            label: 'Facture',
-          ),
-          SlidableAction(
-            onPressed: (ctx) => context.push('/client/tickets'),
-            backgroundColor: Colors.orangeAccent,
-            foregroundColor: Colors.white,
-            icon: Icons.support_agent,
-            label: 'Ticket',
-            borderRadius: const BorderRadius.horizontal(
-              right: Radius.circular(8),
+          if (isRefused)
+            SlidableAction(
+              onPressed: (ctx) => _handleModifyAction(ctx),
+              backgroundColor: Colors.blueAccent,
+              foregroundColor: Colors.white,
+              icon: Icons.edit_note_rounded,
+              label: 'MODIFIER',
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(8),
+              ),
             ),
-          ),
+          if (!isStaged) ...[
+            SlidableAction(
+              onPressed: (ctx) => _handlePdfAction(ctx),
+              backgroundColor: Colors.blueGrey.shade700,
+              foregroundColor: Colors.white,
+              icon: Icons.picture_as_pdf,
+              label: 'PDF',
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(8),
+              ),
+            ),
+            SlidableAction(
+              onPressed: (ctx) => _handleQuoteAction(ctx),
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+              icon: Icons.receipt_long,
+              label: 'Devis',
+            ),
+            SlidableAction(
+              onPressed: (ctx) => _handleInvoiceAction(ctx),
+              backgroundColor: Colors.indigo,
+              foregroundColor: Colors.white,
+              icon: Icons.request_quote_outlined,
+              label: 'Facture',
+            ),
+          ],
+          if (!isPending)
+            SlidableAction(
+              onPressed: (ctx) => context.push('/client/tickets'),
+              backgroundColor: Colors.orangeAccent,
+              foregroundColor: Colors.white,
+              icon: Icons.support_agent,
+              label: 'Ticket',
+              borderRadius: BorderRadius.horizontal(
+                left: isStaged ? Radius.zero : Radius.zero,
+                right: const Radius.circular(8),
+              ),
+            ),
         ],
       ),
       child: Container(
@@ -249,12 +282,56 @@ class ProjectCard extends StatelessWidget {
     }
   }
 
+  void _handleModifyAction(BuildContext ctx) {
+    ctx.push('/client/projects/new', extra: project);
+  }
+
+  void _handleCancelAction(BuildContext ctx) {
+    showDialog(
+      context: ctx,
+      builder: (context) => AlertDialog(
+        title: const Text("Annuler la demande"),
+        content: const Text(
+          "Êtes-vous sûr de vouloir annuler cette demande de projet ? Cette action est irréversible.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("NON", style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              // Capture the messenger before popping the context
+              final messenger = ScaffoldMessenger.of(ctx);
+              ctx.read<ProjectBloc>().add(ProjectCancelRequested(project.id));
+              Navigator.pop(context);
+
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text("Demande annulée"),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
+            },
+            child: const Text(
+              "OUI, ANNULER",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // === 🗂️ Dialogue droite
   void _showRightActionDialog(
     BuildContext context,
     ProjectModel project,
     int index,
   ) {
+    final isPending = project.status.toLowerCase() == 'pending';
+    final isRefused = project.status.toLowerCase() == 'refused';
+    final isStaged = isPending || isRefused;
     showAppModalBottomSheet(
       scrollControlDisabledMaxHeightRatio: 50,
       context: context,
@@ -292,59 +369,90 @@ class ProjectCard extends StatelessWidget {
                 ),
               ),
 
-              // 📄 Télécharger le PDF
-              ListTile(
-                leading: const Icon(
-                  Icons.picture_as_pdf,
-                  color: Colors.blueGrey,
+              if (isPending)
+                ListTile(
+                  leading: const Icon(Icons.cancel_outlined, color: Colors.red),
+                  title: const Text("Annuler la demande"),
+                  subtitle: const Text("Retirer définitivement cette demande"),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _handleCancelAction(ctx);
+                  },
                 ),
-                title: const Text("Télécharger le rapport PDF"),
-                subtitle: const Text("Télécharger la synthèse du projet"),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handlePdfAction(ctx);
-                },
-              ),
 
-              // 💰 Télécharger le devis
-              ListTile(
-                leading: const Icon(Icons.receipt_long, color: Colors.teal),
-                title: const Text("Télécharger le devis"),
-                subtitle: const Text("Récupérer le devis en cours du projet"),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleQuoteAction(ctx);
-                },
-              ),
+              if (isRefused)
+                ListTile(
+                  leading: const Icon(
+                    Icons.edit_note_rounded,
+                    color: Colors.blue,
+                  ),
+                  title: const Text("Modifier et Renvoyer"),
+                  subtitle: const Text("Corriger les détails pour validation"),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _handleModifyAction(ctx);
+                  },
+                ),
 
-              // 🧾 Télécharger la facture
-              ListTile(
-                leading: const Icon(
-                  Icons.request_quote_outlined,
-                  color: Colors.indigo,
+              if (!isStaged) ...[
+                // 📄 Télécharger le PDF
+                ListTile(
+                  leading: const Icon(
+                    Icons.picture_as_pdf,
+                    color: Colors.blueGrey,
+                  ),
+                  title: const Text("Télécharger le rapport PDF"),
+                  subtitle: const Text("Télécharger la synthèse du projet"),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _handlePdfAction(ctx);
+                  },
                 ),
-                title: const Text("Télécharger la facture"),
-                subtitle: const Text(
-                  "Télécharger la dernière facture du projet",
+
+                // 💰 Télécharger le devis
+                ListTile(
+                  leading: const Icon(Icons.receipt_long, color: Colors.teal),
+                  title: const Text("Télécharger le devis"),
+                  subtitle: const Text("Récupérer le devis en cours du projet"),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _handleQuoteAction(ctx);
+                  },
                 ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleInvoiceAction(ctx);
-                },
-              ),
+
+                // 🧾 Télécharger la facture
+                ListTile(
+                  leading: const Icon(
+                    Icons.request_quote_outlined,
+                    color: Colors.indigo,
+                  ),
+                  title: const Text("Télécharger la facture"),
+                  subtitle: const Text(
+                    "Télécharger la dernière facture du projet",
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _handleInvoiceAction(ctx);
+                  },
+                ),
+              ],
 
               // 🎫 Envoyer un ticket
-              ListTile(
-                leading: const Icon(Icons.support_agent, color: Colors.orange),
-                title: const Text("Envoyer un ticket"),
-                subtitle: const Text(
-                  "Contacter le support ou signaler un souci",
+              if (!isPending)
+                ListTile(
+                  leading: const Icon(
+                    Icons.support_agent,
+                    color: Colors.orange,
+                  ),
+                  title: const Text("Envoyer un ticket"),
+                  subtitle: const Text(
+                    "Contacter le support ou signaler un souci",
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.push('/client/tickets');
+                  },
                 ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.push('/client/tickets');
-                },
-              ),
 
               // 👁️ Voir le projet
               ListTile(

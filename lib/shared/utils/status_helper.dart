@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 class StatusHelper {
   static String translateStatus(String status) {
     switch (status.toLowerCase()) {
-      // --- INVOICES / QUOTES ---
       case 'draft':
       case 'brouillon':
         return 'BROUILLON';
@@ -13,9 +12,6 @@ class StatusHelper {
       case 'accepted':
       case 'accepté':
         return 'ACCEPTÉ';
-      case 'refused':
-      case 'refusé':
-        return 'REFUSÉ';
       case 'paid':
       case 'payé':
       case 'payée':
@@ -28,32 +24,23 @@ class StatusHelper {
 
       // --- PROJECTS / TICKETS ---
       case 'planned':
-      case 'open':
-      case 'nouveau':
-      case 'new':
-        return 'PLANIFIÉ';
       case 'in_progress':
-      case 'en cours':
-        return 'EN COURS';
       case 'on_hold':
-      case 'pending': // Shared concept
-      case 'en attente':
-        return 'EN ATTENTE';
+        return 'EN COURS';
+      case 'pending':
+        return 'EN ATTENTE DE VALIDATION';
       case 'completed':
-      case 'livré':
-      case 'terminé':
-      case 'done':
         return 'TERMINÉ';
       case 'canceled':
-      case 'fermé':
       case 'annulé':
         return 'ANNULÉ';
-      case 'todo':
-        return 'À FAIRE';
-      case 'review':
-        return 'RÉVISION';
-      case 'blocked':
-        return 'BLOQUÉ';
+      case 'refused':
+      case 'refusé':
+        return 'REFUSÉ';
+      case 'open':
+      case 'new':
+      case 'nouveau':
+        return 'OUVERT';
       default:
         return status.toUpperCase();
     }
@@ -62,49 +49,33 @@ class StatusHelper {
   static Color getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'planned':
-      case 'open':
-      case 'nouveau':
-      case 'new':
-      case 'draft':
-      case 'brouillon':
-      case 'todo':
-        return Colors.blue; // Or grey for draft? Usually draft is grey.
-
       case 'in_progress':
-      case 'en cours':
-      case 'unpaid':
-      case 'impayé':
-      case 'partially_paid':
-      case 'sent': // Sent could be blue or orange waiting
-      case 'envoyé':
-        return Colors.orange;
+      case 'on_hold':
+        return Colors.blue;
+
+      case 'pending':
+        return Colors.orange; // Yellow/Orange for pending validation
 
       case 'completed':
       case 'paid':
-      case 'payé':
       case 'payée':
-      case 'livré':
-      case 'terminé':
-      case 'done':
-      case 'accepted':
-      case 'accepté':
         return Colors.green;
 
-      case 'on_hold':
-      case 'en attente':
-      case 'pending':
-      case 'blocked':
       case 'refused':
+      case 'canceled':
+      case 'annulé':
       case 'refusé':
         return Colors.red;
 
-      case 'canceled':
-      case 'fermé':
-      case 'annulé':
+      case 'draft':
+      case 'brouillon':
         return Colors.grey;
 
-      case 'review':
-        return Colors.purple;
+      case 'open':
+      case 'new':
+      case 'nouveau':
+        return Colors.teal;
+
       default:
         return Colors.black;
     }
