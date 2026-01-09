@@ -145,7 +145,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Expanded(
                                 child: _buildQuickActionCard(
                                   icon: Icons.receipt_long_outlined,
-                                  title: "Factures",
+                                  title: "Factures & Devis",
                                   number: state.data.invoices.length,
                                   color: Colors.pink,
                                   onTap: () => context.push('/client/invoices'),
@@ -407,7 +407,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ---------------- INVOICES ----------------
-  Widget _buildInvoicesList(List<InvoiceModel> invoices) {
+  Widget _buildInvoicesList(List<InvoiceModel> invoiceList) {
+    // Filter to show only real invoices (not quotes)
+    final invoices = invoiceList.where((i) => i.type == 'invoice').toList();
+
     final recentInvoices = invoices.length > 3
         ? invoices.sublist(0, 3)
         : invoices;

@@ -63,7 +63,7 @@ class _ClientLayoutState extends State<ClientLayout> {
         backgroundColor: Colors.white,
         centerTitle: true,
         title: const Text(
-          "HYPSTER MARKETING",
+          "HIPSTER MARKETING",
           style: TextStyle(
             fontWeight: FontWeight.w900,
             letterSpacing: 2.0,
