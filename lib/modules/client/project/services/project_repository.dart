@@ -32,11 +32,12 @@ class ProjectRepository {
     }
   }
 
-  Future<bool> createProject({
+  Future<int?> createProject({
     required String name,
     required String description,
     required DateTime startDate,
     required DateTime endDate,
+    double? budget,
   }) async {
     try {
       final response = await _dio.post(
@@ -46,11 +47,32 @@ class ProjectRepository {
           'description': description,
           'start_date': startDate.toIso8601String(),
           'end_date': endDate.toIso8601String(),
+          if (budget != null) 'budget': budget,
         },
       );
-      return response.statusCode == 201 || response.statusCode == 200;
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return response
+            .data['id']; // Adjust based on actual API response structure
+      }
+      return null;
     } catch (e) {
       print('Error creating project: $e');
+      return null;
+    }
+  }
+
+  Future<bool> uploadFile(int projectId, String filePath) async {
+    try {
+      String fileName = filePath.split('/').last;
+      FormData formData = FormData.fromMap({
+        "file": await MultipartFile.fromFile(filePath, filename: fileName),
+        "projectId": projectId,
+      });
+
+      final response = await _dio.post('/files/upload', data: formData);
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print('Error uploading file: $e');
       return false;
     }
   }

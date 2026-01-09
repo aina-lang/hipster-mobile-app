@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tiko_tiko/shared/widgets/project_card.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_bloc.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_event.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_state.dart';
-import 'package:tiko_tiko/shared/utils/ui_helpers.dart';
 
 class ProjectScreen extends StatefulWidget {
   const ProjectScreen({super.key});
@@ -14,33 +13,42 @@ class ProjectScreen extends StatefulWidget {
   State<ProjectScreen> createState() => _ProjectScreenState();
 }
 
-class _ProjectScreenState extends State<ProjectScreen> {
+class _ProjectScreenState extends State<ProjectScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   String searchQuery = "";
-  String? filterStatus;
-  String sortBy = "date_desc";
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     context.read<ProjectBloc>().add(ProjectLoadRequested());
   }
 
-  void _onStatusSelected(String? value) {
-    setState(() {
-      filterStatus = (value == "Tous") ? null : value;
-    });
-    context.read<ProjectBloc>().add(
-      ProjectLoadRequested(status: filterStatus, search: searchQuery),
-    );
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   void _onSearchChanged(String value) {
     setState(() {
       searchQuery = value;
     });
-    context.read<ProjectBloc>().add(
-      ProjectLoadRequested(status: filterStatus, search: searchQuery),
-    );
+    // We filter client-side for now to support tabs
+    context.read<ProjectBloc>().add(ProjectLoadRequested(search: searchQuery));
+  }
+
+  List<dynamic> _filterProjects(List<dynamic> projects, bool isPendingTab) {
+    if (isPendingTab) {
+      return projects
+          .where((p) => p.status == 'pending' || p.status == 'refused')
+          .toList();
+    } else {
+      return projects
+          .where((p) => p.status != 'pending' && p.status != 'refused')
+          .toList();
+    }
   }
 
   @override
@@ -56,6 +64,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 backgroundColor: Colors.green,
               ),
             );
+            // Switch to Pending tab
+            _tabController.animateTo(1);
           } else if (state is ProjectSubmitFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -65,279 +75,138 @@ class _ProjectScreenState extends State<ProjectScreen> {
             );
           }
         },
-        child: RefreshIndicator(
-          onRefresh: () async {
-            context.read<ProjectBloc>().add(
-              ProjectLoadRequested(
-                refresh: true,
-                status: filterStatus,
-                search: searchQuery,
-              ),
-            );
-          },
-          child: CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                floating: true,
-                pinned: true,
-                scrolledUnderElevation: 0,
-                backgroundColor: Colors.white,
-                title: Text(
-                  "Projets",
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: Colors.black,
-                  ),
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => [
+            SliverAppBar(
+              floating: true,
+              pinned: true,
+              backgroundColor: Colors.white,
+              title: Text(
+                "Projets",
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
                 ),
-                centerTitle: false,
-                actions: [
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.filter_list_rounded),
-                    onSelected: _onStatusSelected,
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(value: "Tous", child: Text("Tous")),
-                      PopupMenuItem(
-                        value: "in_progress",
-                        child: Text("En cours"),
-                      ),
-                      PopupMenuItem(value: "completed", child: Text("Livré")),
-                      PopupMenuItem(
-                        value: "on_hold",
-                        child: Text("En attente"),
-                      ),
-                    ],
-                  ),
-                ],
-                bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(85),
-                  child: Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(16),
-                    child: TextField(
-                      onChanged: _onSearchChanged,
-                      decoration: InputDecoration(
-                        hintText: "Rechercher un projet...",
-                        prefixIcon: const Icon(
-                          Icons.search_rounded,
-                          color: Colors.black54,
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 0,
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(110),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: TextField(
+                        onChanged: _onSearchChanged,
+                        decoration: InputDecoration(
+                          hintText: "Rechercher...",
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.grey,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 0,
+                            horizontal: 16,
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    TabBar(
+                      controller: _tabController,
+                      labelColor: Colors.black,
+                      unselectedLabelColor: Colors.grey,
+                      indicatorColor: Colors.black,
+                      tabs: const [
+                        Tab(text: "Mes Projets"),
+                        Tab(text: "Demandes"),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              BlocBuilder<ProjectBloc, ProjectState>(
-                builder: (context, state) {
-                  if (state is ProjectLoading) {
-                    return const SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Center(
-                        child: CircularProgressIndicator(color: Colors.black),
-                      ),
-                    );
-                  }
-                  if (state is ProjectLoaded) {
-                    final projects = state.projects;
-                    if (projects.isEmpty) {
-                      return SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.folder_open_rounded,
-                                size: 80,
-                                color: Colors.grey.shade300,
-                              ),
-                              const Text(
-                                "Aucun projet trouvé",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    return SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          return ProjectCard(
-                            project: projects[index],
-                            index: index,
-                          );
-                        }, childCount: projects.length),
-                      ),
-                    );
-                  }
-                  if (state is ProjectFailure) {
-                    return SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Center(child: Text(state.error)),
-                    );
-                  }
-                  return const SliverToBoxAdapter(child: SizedBox.shrink());
-                },
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ),
+          ],
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              // Tab 1: Active Projects
+              _buildProjectList(context, false),
+              // Tab 2: Pending/Refused Projects
+              _buildProjectList(context, true),
             ],
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showSubmitProjectDialog(context),
-        backgroundColor: Colors.black,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          "NOUVEAU PROJET",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 90.0),
+        child: FloatingActionButton.extended(
+          onPressed: () => context.push('/client/projects/new'),
+          backgroundColor: Colors.black,
+          icon: const Icon(Icons.add_rounded, color: Colors.white),
+          label: const Text(
+            "SOUMETTRE UN PROJET",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
         ),
       ),
     );
   }
 
-  void _showSubmitProjectDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
-    DateTime startDate = DateTime.now();
-    DateTime endDate = DateTime.now().add(const Duration(days: 30));
+  Widget _buildProjectList(BuildContext context, bool isPendingTab) {
+    return BlocBuilder<ProjectBloc, ProjectState>(
+      builder: (context, state) {
+        if (state is ProjectLoading) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.black),
+          );
+        }
+        if (state is ProjectLoaded) {
+          final projects = _filterProjects(state.projects, isPendingTab);
 
-    showAppModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                "SOUMETTRE UN PROJET",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.1,
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: "Nom du projet",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+          if (projects.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isPendingTab
+                        ? Icons.hourglass_empty_rounded
+                        : Icons.folder_open_rounded,
+                    size: 64,
+                    color: Colors.grey.shade300,
                   ),
-                  prefixIcon: const Icon(Icons.title),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: "Description",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+                  const SizedBox(height: 16),
+                  Text(
+                    isPendingTab
+                        ? "Aucune demande en cours"
+                        : "Aucun projet actif",
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  prefixIcon: const Icon(Icons.description),
-                ),
+                ],
               ),
-              const SizedBox(height: 16),
-              const Text(
-                "Date de début :",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: startDate,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null) startDate = picked;
-                },
-                child: Text(DateFormat('dd/MM/yyyy').format(startDate)),
-              ),
-              const Text(
-                "Date de fin prévue :",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: endDate,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null) endDate = picked;
-                },
-                child: Text(DateFormat('dd/MM/yyyy').format(endDate)),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  if (nameController.text.isNotEmpty &&
-                      descController.text.isNotEmpty) {
-                    context.read<ProjectBloc>().add(
-                      ProjectSubmitRequested(
-                        name: nameController.text,
-                        description: descController.text,
-                        startDate: startDate,
-                        endDate: endDate,
-                      ),
-                    );
-                    Navigator.pop(ctx);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                child: const Text(
-                  "SOUMETTRE",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-      ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            itemCount: projects.length,
+            itemBuilder: (context, index) {
+              return ProjectCard(project: projects[index], index: index);
+            },
+          );
+        }
+        if (state is ProjectFailure) {
+          return Center(child: Text(state.error));
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 }

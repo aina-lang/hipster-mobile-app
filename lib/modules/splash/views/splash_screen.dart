@@ -11,46 +11,54 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
+    // Logo responsive : entre 28% et 40% de la hauteur de l'écran
+    final double logoSize = size.height * 0.28;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo
-            Image.asset('assets/images/logo.png', width: 150, height: 150)
+            /// LOGO RESPONSIVE + ANIMATION
+            Image.asset(
+                  'assets/images/logo.png',
+                  width: logoSize,
+                  height: logoSize,
+                )
                 .animate()
                 .fade(duration: 800.ms)
                 .scale(
                   delay: 300.ms,
-                  duration: 500.ms,
+                  duration: 600.ms,
                   curve: Curves.easeOutBack,
                 ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
-            // Animated Text
+            /// TEXTE ANIMÉ
             Text(
                   "Hipster Marketing",
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: size.width * 0.05,
                     fontWeight: FontWeight.w900,
+                    fontFamily: 'Outfit',
                     color: Colors.black,
-                    fontFamily:
-                        'Outfit', // Assuming you use this font or default
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.5,
                   ),
                 )
                 .animate()
-                .fadeIn(delay: 800.ms, duration: 800.ms)
-                .shimmer(delay: 1500.ms, duration: 1500.ms)
+                .fadeIn(delay: 700.ms, duration: 900.ms)
                 .moveY(
-                  begin: 10,
+                  begin: 12,
                   end: 0,
-                  delay: 800.ms,
+                  delay: 700.ms,
                   duration: 600.ms,
                   curve: Curves.easeOut,
-                ),
+                )
+                .shimmer(delay: 1500.ms, duration: 1500.ms),
           ],
         ),
       ),

@@ -21,14 +21,25 @@ class ProjectSubmitRequested extends ProjectEvent {
   final String description;
   final DateTime startDate;
   final DateTime endDate;
+  final double? budget;
+  final List<String> files;
 
   ProjectSubmitRequested({
     required this.name,
     required this.description,
     required this.startDate,
     required this.endDate,
+    this.budget,
+    this.files = const [],
   });
 
   @override
-  List<Object?> get props => [name, description, startDate, endDate];
+  List<Object?> get props => [
+    name,
+    description,
+    startDate,
+    endDate,
+    budget,
+    files,
+  ];
 }

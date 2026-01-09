@@ -6,6 +6,7 @@ import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
 import 'package:tiko_tiko/layouts/client_layout.dart';
 import 'package:tiko_tiko/modules/client/devis_facture/views/invoice_screen.dart';
 import 'package:tiko_tiko/modules/client/devis_facture/views/invoice_detail_screen.dart';
+import 'package:tiko_tiko/modules/client/project/views/project_submit_screen.dart';
 import 'package:tiko_tiko/shared/models/invoice_model.dart';
 import 'package:tiko_tiko/modules/client/loyality/views/loyalty_screen.dart';
 import 'package:tiko_tiko/modules/client/notification/views/notification_screen.dart';
@@ -44,79 +45,79 @@ class AppRouter {
       refreshListenable: _GoRouterRefreshStream(
         context.read<AuthBloc>().stream,
       ),
-      // redirect: (context, state) {
-      //   final authState = context.read<AuthBloc>().state;
-      //   print(
-      //     'AppRouter: Redirect check - state: $authState, path: ${state.matchedLocation}',
-      //   );
+      redirect: (context, state) {
+        final authState = context.read<AuthBloc>().state;
+        print(
+          'AppRouter: Redirect check - state: $authState, path: ${state.matchedLocation}',
+        );
 
-      //   final bool isPublicPath =
-      //       state.matchedLocation == '/login' ||
-      //       state.matchedLocation == '/register' ||
-      //       state.matchedLocation == '/otp-verification' ||
-      //       state.matchedLocation == '/forgot-password' ||
-      //       state.matchedLocation == '/reset-otp' ||
-      //       state.matchedLocation == '/onboarding' ||
-      //       state.matchedLocation == '/';
+        final bool isPublicPath =
+            state.matchedLocation == '/login' ||
+            state.matchedLocation == '/register' ||
+            state.matchedLocation == '/otp-verification' ||
+            state.matchedLocation == '/forgot-password' ||
+            state.matchedLocation == '/reset-otp' ||
+            state.matchedLocation == '/onboarding' ||
+            state.matchedLocation == '/';
 
-      //   if (authState is AuthInitial) {
-      //     // Au démarrage, on attend que AuthStartupChecked s'exécute
-      //     return null;
-      //   }
+        if (authState is AuthInitial) {
+          // Au démarrage, on attend que AuthStartupChecked s'exécute
+          return null;
+        }
 
-      //   if (authState is AuthOnboarding) {
-      //     if (state.matchedLocation != '/onboarding') {
-      //       return '/onboarding';
-      //     }
-      //     return null;
-      //   }
+        if (authState is AuthOnboarding) {
+          if (state.matchedLocation != '/onboarding') {
+            return '/onboarding';
+          }
+          return null;
+        }
 
-      //   if (authState is AuthUnauthenticated || authState is AuthFailure) {
-      //     // Onboarding est fini (ou on est en échec).
-      //     // On ne permet que /login, /register, /otp-verification.
-      //     final bool isAllowedPublicPath =
-      //         state.matchedLocation == '/login' ||
-      //         state.matchedLocation == '/register' ||
-      //         state.matchedLocation == '/otp-verification' ||
-      //         state.matchedLocation == '/forgot-password' ||
-      //         state.matchedLocation == '/reset-otp';
+        if (authState is AuthUnauthenticated || authState is AuthFailure) {
+          // Onboarding est fini (ou on est en échec).
+          // On ne permet que /login, /register, /otp-verification.
+          final bool isAllowedPublicPath =
+              state.matchedLocation == '/login' ||
+              state.matchedLocation == '/register' ||
+              state.matchedLocation == '/otp-verification' ||
+              state.matchedLocation == '/forgot-password' ||
+              state.matchedLocation == '/reset-otp';
 
-      //     if (!isAllowedPublicPath) {
-      //       print('AppRouter: Unauthenticated, redirecting to /login');
-      //       return '/login';
-      //     }
-      //     return null;
-      //   }
+          if (!isAllowedPublicPath) {
+            print('AppRouter: Unauthenticated, redirecting to /login');
+            return '/login';
+          }
+          return null;
+        }
 
-      //   if (authState is AuthNeedsVerification) {
-      //     if (state.matchedLocation != '/otp-verification') {
-      //       print(
-      //         'AppRouter: Needs verification, redirecting to /otp-verification',
-      //       );
-      //       return '/otp-verification';
-      //     }
-      //     return null;
-      //   }
+        if (authState is AuthNeedsVerification) {
+          if (state.matchedLocation != '/otp-verification') {
+            print(
+              'AppRouter: Needs verification, redirecting to /otp-verification',
+            );
+            return '/otp-verification';
+          }
+          return null;
+        }
 
-      //   if (authState is AuthAuthenticated) {
-      //     if (isPublicPath) {
-      //       print('AppRouter: Authenticated, redirecting to /client/dashboard');
-      //       return '/client/dashboard';
-      //     }
+        if (authState is AuthAuthenticated) {
+          if (isPublicPath) {
+            print('AppRouter: Authenticated, redirecting to /client/dashboard');
+            return '/client/dashboard';
+          }
 
-      //     // Force completion du profil client si incomplet
-      //     if (authState.user.isClient &&
-      //         !authState.user.isProfileComplete &&
-      //         state.matchedLocation != '/profile') {
-      //       print(
-      //         'AppRouter: Profile incomplete, forcing redirect to /profile',
-      //       );
-      //       return '/profile';
-      //     }
-      //   }
+          // Force completion du profil client si incomplet
+          if (authState.user.isClient &&
+              !authState.user.isProfileComplete &&
+              state.matchedLocation != '/profile') {
+            print(
+              'AppRouter: Profile incomplete, forcing redirect to /profile',
+            );
+            return '/profile';
+          }
+        }
 
-      //   return null;
-      // },
+        return null;
+      },
       routes: [
         // === PUBLIC ===
         GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
@@ -165,6 +166,16 @@ class AppRouter {
           builder: (context, state) => const ProfileScreen(),
         ),
 
+        GoRoute(
+          path: '/client/projects/new',
+          builder: (context, state) => const ProjectSubmitScreen(),
+        ),
+
+        GoRoute(
+          path: '/client/notifications',
+          builder: (context, state) => const NotificationScreen(),
+        ),
+
         // === CLIENT SHELL ===
         ShellRoute(
           builder: (context, state, child) => ClientLayout(child: child),
@@ -209,10 +220,6 @@ class AppRouter {
             GoRoute(
               path: '/client/loyalty',
               builder: (context, state) => const LoyaltyScreen(),
-            ),
-            GoRoute(
-              path: '/client/notifications',
-              builder: (context, state) => const NotificationScreen(),
             ),
             GoRoute(
               path: '/client/invoice-detail',

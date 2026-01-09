@@ -90,7 +90,7 @@ class _ClientLayoutState extends State<ClientLayout> {
                           size: 26,
                         ),
                       ),
-                      onPressed: () => context.go('/client/notifications'),
+                      onPressed: () => context.push('/client/notifications'),
                     ),
                   );
                 },

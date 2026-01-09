@@ -25,13 +25,22 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     on<ProjectSubmitRequested>((event, emit) async {
       emit(ProjectSubmitInProgress());
       try {
-        final success = await repository.createProject(
+        final projectId = await repository.createProject(
           name: event.name,
           description: event.description,
           startDate: event.startDate,
           endDate: event.endDate,
+          budget: event.budget,
         );
-        if (success) {
+
+        if (projectId != null) {
+          // Upload files if any
+          if (event.files.isNotEmpty) {
+            for (final filePath in event.files) {
+              await repository.uploadFile(projectId, filePath);
+            }
+          }
+
           emit(ProjectSubmitSuccess());
           add(ProjectLoadRequested(refresh: true));
         } else {

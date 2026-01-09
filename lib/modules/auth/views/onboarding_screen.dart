@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
 import 'package:tiko_tiko/shared/widgets/custom_button.dart';
 
@@ -18,7 +19,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<OnboardingItem> _items = [
     OnboardingItem(
       image: 'assets/images/logo.png',
-      title: 'Bienvenue sur Hipster',
+      title: 'Bienvenue sur Hipster Marketing',
       description:
           'Suivez facilement vos projets et restez informé à chaque étape, tout en centralisant vos interactions avec notre équipe.',
     ),
@@ -54,7 +55,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         backgroundColor: const Color(0xfffefdfb),
         body: Stack(
           children: [
-            // 🔹 PageView avec animation fluide entre pages
+            // 🔹 PageView
             PageView.builder(
               controller: _pageController,
               onPageChanged: (int page) => setState(() => _currentPage = page),
@@ -63,7 +64,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   OnboardingPage(item: _items[index]),
             ),
 
-            // 🔹 Boutons et indicateurs
+            // 🔹 Overlay: boutons + indicateurs
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -90,15 +91,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               color: Theme.of(context).primaryColor,
                             ),
                           ),
-                          onPressed: () => context.read<AuthBloc>().add(
-                            AuthOnboardingCompletedRequested(),
-                          ),
+                          onPressed: () {
+                            context.read<AuthBloc>().add(
+                              AuthOnboardingCompletedRequested(),
+                            );
+                            context.go('/login');
+                          },
                         ),
                       ],
                     ),
+
                     const Spacer(),
-                    // ... (indicateurs)
-                    // (approx line 125)
+
+                    // 🔥 INDICATEURS EFFET GOUTTE D’EAU
+                    WaterDropIndicator(
+                      count: _items.length,
+                      currentIndex: _currentPage,
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // 🔹 Bouton principal
                     CustomButton(
                       text: _currentPage == _items.length - 1
                           ? 'Commencer'
@@ -108,6 +121,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           context.read<AuthBloc>().add(
                             AuthOnboardingCompletedRequested(),
                           );
+                          context.go('/login');
                         } else {
                           _pageController.nextPage(
                             duration: const Duration(milliseconds: 400),
@@ -128,7 +142,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-// 🔹 Modèle d’un élément d’onboarding
+// ---------------------------------------------------------------------------
+// 🔹 MODELE OnboardingItem
+// ---------------------------------------------------------------------------
+
 class OnboardingItem {
   final String image;
   final String title;
@@ -141,7 +158,10 @@ class OnboardingItem {
   });
 }
 
-// 🔹 Page avec animations fluides (image, titre, description)
+// ---------------------------------------------------------------------------
+// 🔹 PAGE Onboarding avec animations
+// ---------------------------------------------------------------------------
+
 class OnboardingPage extends StatelessWidget {
   final OnboardingItem item;
 
@@ -194,7 +214,7 @@ class OnboardingPage extends StatelessWidget {
                     child: Text(
                       item.title,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.black87,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -236,6 +256,45 @@ class OnboardingPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 🔥 WaterDropIndicator (effet goutte d’eau)
+// ---------------------------------------------------------------------------
+
+class WaterDropIndicator extends StatelessWidget {
+  final int count;
+  final int currentIndex;
+
+  const WaterDropIndicator({
+    super.key,
+    required this.count,
+    required this.currentIndex,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (index) {
+        final bool isActive = index == currentIndex;
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutBack,
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          width: isActive ? 22 : 10, // ← goutte qui s’étire
+          height: 10,
+          decoration: BoxDecoration(
+            color: isActive
+                ? Theme.of(context).primaryColor
+                : Colors.grey.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(50),
+          ),
+        );
+      }),
     );
   }
 }
