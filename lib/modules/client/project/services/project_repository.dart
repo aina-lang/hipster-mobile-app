@@ -41,7 +41,7 @@ class ProjectRepository {
   }) async {
     try {
       final response = await _dio.post(
-        '/projects',
+        '/projects/client/submit', // ✅ Use dedicated client endpoint
         data: {
           'name': name,
           'description': description,
