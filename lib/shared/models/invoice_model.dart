@@ -7,6 +7,9 @@ class InvoiceModel {
   final double subTotal;
   final double taxRate;
   final double taxAmount;
+  final double loyaltyDiscountPercent;
+  final double loyaltyDiscountAmount;
+  final bool usedLoyaltyDiscount;
   final List<InvoiceItemModel> items;
   final DateTime? dueDate;
   final DateTime createdAt;
@@ -26,6 +29,9 @@ class InvoiceModel {
     required this.subTotal,
     required this.taxRate,
     required this.taxAmount,
+    this.loyaltyDiscountPercent = 0,
+    this.loyaltyDiscountAmount = 0,
+    this.usedLoyaltyDiscount = false,
     this.items = const [],
     this.dueDate,
     required this.createdAt,
@@ -47,6 +53,13 @@ class InvoiceModel {
       subTotal: double.tryParse(json['subTotal']?.toString() ?? '0') ?? 0.0,
       taxRate: double.tryParse(json['taxRate']?.toString() ?? '0') ?? 0.0,
       taxAmount: double.tryParse(json['taxAmount']?.toString() ?? '0') ?? 0.0,
+      loyaltyDiscountPercent:
+          double.tryParse(json['loyaltyDiscountPercent']?.toString() ?? '0') ??
+          0.0,
+      loyaltyDiscountAmount:
+          double.tryParse(json['loyaltyDiscountAmount']?.toString() ?? '0') ??
+          0.0,
+      usedLoyaltyDiscount: json['usedLoyaltyDiscount'] == true,
       pdfUrl: json['pdfUrl']?.toString(),
       items: (json['items'] is List)
           ? (json['items'] as List)
