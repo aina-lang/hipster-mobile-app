@@ -25,6 +25,21 @@ class InvoiceRepository {
     }
   }
 
+  Future<InvoiceModel> getInvoice(int id) async {
+    try {
+      final response = await _dio.get('/invoices/$id');
+      if (response.statusCode == 200) {
+        final data = response.data['data']?['data'] ?? response.data['data'];
+        if (data == null) throw Exception('Data not found in response');
+        return InvoiceModel.fromJson(data);
+      }
+      throw Exception('Failed to load invoice');
+    } catch (e) {
+      print('Error fetching invoice details: $e');
+      rethrow;
+    }
+  }
+
   Future<InvoiceModel> updateStatus(int id, String status) async {
     try {
       final response = await _dio.patch(
@@ -32,7 +47,9 @@ class InvoiceRepository {
         data: {'status': status},
       );
       if (response.statusCode == 200) {
-        return InvoiceModel.fromJson(response.data['data']);
+        final data = response.data['data']?['data'] ?? response.data['data'];
+        if (data == null) throw Exception('Data not found in response');
+        return InvoiceModel.fromJson(data);
       }
       throw Exception('Failed to update status');
     } catch (e) {
@@ -43,7 +60,6 @@ class InvoiceRepository {
 
   Future<String> getPaymentLink(int id) async {
     try {
-      // Assuming there's a checkout endpoint or similar
       final response = await _dio.post(
         '/payments/create-checkout',
         data: {'invoiceId': id},

@@ -14,6 +14,13 @@ class InvoiceLoadRequested extends InvoiceEvent {
   InvoiceLoadRequested({this.refresh = false});
 }
 
+class InvoiceLoadOneRequested extends InvoiceEvent {
+  final int id;
+  InvoiceLoadOneRequested(this.id);
+  @override
+  List<Object?> get props => [id];
+}
+
 class InvoiceStatusUpdateRequested extends InvoiceEvent {
   final int id;
   final String status;
@@ -39,6 +46,13 @@ class InvoiceLoaded extends InvoiceState {
   List<Object?> get props => [invoices];
 }
 
+class InvoiceDetailLoaded extends InvoiceState {
+  final InvoiceModel invoice;
+  InvoiceDetailLoaded(this.invoice);
+  @override
+  List<Object?> get props => [invoice];
+}
+
 class InvoiceStatusUpdateSuccess extends InvoiceState {
   final InvoiceModel updatedInvoice;
   InvoiceStatusUpdateSuccess(this.updatedInvoice);
@@ -62,6 +76,16 @@ class InvoiceBloc extends Bloc<InvoiceEvent, InvoiceState> {
       try {
         final invoices = await repository.getInvoices();
         emit(InvoiceLoaded(invoices));
+      } catch (e) {
+        emit(InvoiceFailure(e.toString()));
+      }
+    });
+
+    on<InvoiceLoadOneRequested>((event, emit) async {
+      emit(InvoiceLoading());
+      try {
+        final invoice = await repository.getInvoice(event.id);
+        emit(InvoiceDetailLoaded(invoice));
       } catch (e) {
         emit(InvoiceFailure(e.toString()));
       }

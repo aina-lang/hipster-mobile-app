@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
 import 'package:tiko_tiko/shared/widgets/custom_button.dart';
 import 'package:tiko_tiko/shared/widgets/custom_snackbar.dart';
+import 'package:tiko_tiko/shared/blocs/network/network_bloc.dart';
+import 'package:tiko_tiko/shared/blocs/network/network_state.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -370,37 +373,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 32),
 
                     // SIGN UP BUTTON
-                    Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 20,
-                            spreadRadius: 1,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: CustomButton(
-                        text: "S'inscrire",
-                        isLoading: state is AuthLoading,
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            context.read<AuthBloc>().add(
-                              AuthRegisterRequested(
-                                _nameController.text,
-                                _emailController.text,
-                                _passwordController.text,
-                                'client_marketing',
+                    BlocBuilder<NetworkBloc, NetworkState>(
+                      builder: (context, netState) {
+                        final isOffline = netState.connectionStatus.contains(
+                          ConnectivityResult.none,
+                        );
+                        return Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 20,
+                                spreadRadius: 1,
+                                offset: const Offset(0, 6),
                               ),
-                            );
-                          }
-                        },
-                        height: 56,
-                        borderRadius: 14,
-                      ),
+                            ],
+                          ),
+                          child: CustomButton(
+                            text: isOffline ? "Pas de connexion" : "S'inscrire",
+                            isLoading: state is AuthLoading,
+                            onPressed: isOffline
+                                ? null
+                                : () {
+                                    if (_formKey.currentState!.validate()) {
+                                      context.read<AuthBloc>().add(
+                                        AuthRegisterRequested(
+                                          _nameController.text,
+                                          _emailController.text,
+                                          _passwordController.text,
+                                          'client_marketing',
+                                        ),
+                                      );
+                                    }
+                                  },
+                            height: 56,
+                            borderRadius: 14,
+                          ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 24),

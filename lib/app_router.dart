@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+
 import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
 import 'package:tiko_tiko/layouts/client_layout.dart';
 import 'package:tiko_tiko/modules/client/devis_facture/views/invoice_screen.dart';
@@ -15,6 +15,8 @@ import 'package:tiko_tiko/modules/client/ticket/views/ticket_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tiko_tiko/modules/client/devis_facture/bloc/invoice_bloc.dart';
 import 'package:tiko_tiko/modules/client/devis_facture/services/invoice_repository.dart';
+import 'package:tiko_tiko/modules/client/loyality/bloc/loyalty_bloc.dart';
+import 'package:tiko_tiko/modules/client/loyality/services/loyalty_repository.dart';
 
 // === AUTH & ONBOARDING ===
 import 'package:tiko_tiko/modules/auth/views/onboarding_screen.dart';
@@ -37,16 +39,25 @@ import 'package:tiko_tiko/modules/client/project/views/project_detail_screen.dar
 import 'package:tiko_tiko/shared/models/project_model.dart';
 
 class AppRouter {
-  AppRouter();
+  static final GlobalKey<NavigatorState> rootNavigatorKey =
+      GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> shellNavigatorKey =
+      GlobalKey<NavigatorState>();
 
-  GoRouter getRouter(BuildContext context) {
+  final AuthBloc authBloc;
+  late final GoRouter router;
+
+  AppRouter(this.authBloc) {
+    router = _initRouter();
+  }
+
+  GoRouter _initRouter() {
     return GoRouter(
+      navigatorKey: rootNavigatorKey,
       initialLocation: '/',
-      refreshListenable: _GoRouterRefreshStream(
-        context.read<AuthBloc>().stream,
-      ),
+      refreshListenable: _GoRouterRefreshStream(authBloc.stream),
       redirect: (context, state) {
-        final authState = context.read<AuthBloc>().state;
+        final authState = authBloc.state;
         print(
           'AppRouter: Redirect check - state: $authState, path: ${state.matchedLocation}',
         );
@@ -175,15 +186,24 @@ class AppRouter {
           },
         ),
 
-        GoRoute(
-          path: '/client/notifications',
-          builder: (context, state) => const NotificationScreen(),
-        ),
-
         // === CLIENT SHELL ===
         ShellRoute(
-          builder: (context, state, child) => ClientLayout(child: child),
+          navigatorKey: shellNavigatorKey,
+          builder: (context, state, child) => MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (context) =>
+                    LoyaltyBloc(LoyaltyRepository())..add(LoyaltyRequested()),
+              ),
+              // Add other global client blocs here if needed
+            ],
+            child: ClientLayout(child: child),
+          ),
           routes: [
+            GoRoute(
+              path: '/client/notifications',
+              builder: (context, state) => const NotificationScreen(),
+            ),
             GoRoute(
               path: '/client/dashboard',
               builder: (context, state) => const DashboardScreen(),
@@ -223,7 +243,7 @@ class AppRouter {
             ),
             GoRoute(
               path: '/client/loyalty',
-              builder: (context, state) => const LoyaltyScreen(),
+              builder: (context, state) => LoyaltyScreen(),
             ),
             GoRoute(
               path: '/client/invoice-detail',
@@ -231,7 +251,21 @@ class AppRouter {
                 final invoice = state.extra as InvoiceModel;
                 return BlocProvider(
                   create: (context) => InvoiceBloc(InvoiceRepository()),
-                  child: InvoiceDetailScreen(invoice: invoice),
+                  child: InvoiceDetailScreen(initialInvoice: invoice),
+                );
+              },
+            ),
+            GoRoute(
+              path: '/client/invoices/:id',
+              builder: (context, state) {
+                final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+                final invoice = state.extra as InvoiceModel?;
+                return BlocProvider(
+                  create: (context) => InvoiceBloc(InvoiceRepository()),
+                  child: InvoiceDetailScreen(
+                    invoiceId: id,
+                    initialInvoice: invoice,
+                  ),
                 );
               },
             ),
@@ -247,8 +281,6 @@ class _GoRouterRefreshStream extends ChangeNotifier {
     _subscription = stream.asBroadcastStream().listen(
       (dynamic _) => notifyListeners(),
     );
-    // Move notifyListeners AFTER assignment to prevent potential access in dispose() if triggered immediately
-    notifyListeners();
   }
 
   late final StreamSubscription<dynamic> _subscription;

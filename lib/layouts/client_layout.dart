@@ -8,6 +8,9 @@ import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
 import 'package:tiko_tiko/shared/blocs/notification/notification_bloc.dart';
 import 'package:tiko_tiko/shared/blocs/ui/ui_cubit.dart';
 import 'package:tiko_tiko/shared/blocs/ui/ui_state.dart';
+import 'package:tiko_tiko/shared/blocs/network/network_bloc.dart';
+import 'package:tiko_tiko/shared/blocs/network/network_state.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class ClientLayout extends StatefulWidget {
   final Widget child;
@@ -166,7 +169,78 @@ class _ClientLayoutState extends State<ClientLayout> {
             ),
         ],
       ),
-      body: widget.child,
+      body: Stack(
+        children: [
+          widget.child,
+          BlocBuilder<NetworkBloc, NetworkState>(
+            builder: (context, state) {
+              final isOffline = state.connectionStatus.contains(
+                ConnectivityResult.none,
+              );
+              if (!isOffline) return const SizedBox.shrink();
+
+              return Positioned.fill(
+                child: Stack(
+                  children: [
+                    BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                      child: Container(color: Colors.black.withOpacity(0.4)),
+                    ),
+                    Center(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.wifi_off_rounded,
+                                size: 48,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            const Text(
+                              "Connexion Perdue",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Veuillez vérifier votre connexion internet\npour continuer.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 15,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
 
       /// --- Premium Animated Notch Bottom Navigation ---
       bottomNavigationBar: isComplete

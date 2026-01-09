@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tiko_tiko/shared/models/project_model.dart';
 import 'package:tiko_tiko/shared/utils/status_helper.dart';
 import 'package:intl/intl.dart';
@@ -89,6 +90,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.black),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/client/projects');
+            }
+          },
+        ),
         title: Text(
           project.name.toUpperCase(),
           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),

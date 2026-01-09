@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tiko_tiko/modules/client/ticket/bloc/ticket_bloc.dart';
 import 'package:tiko_tiko/modules/client/ticket/bloc/ticket_event.dart';
@@ -48,6 +49,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       appBar: AppBar(
         scrolledUnderElevation: 0,
         backgroundColor: cs.surface,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: cs.onSurface),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/client/tickets');
+            }
+          },
+        ),
         title: Text(
           "Ticket #${widget.id}",
           style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold),

@@ -158,7 +158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   title: "Fidélité",
                                   number: state.data.loyalty?.projectCount ?? 0,
                                   color: Colors.purple,
-                                  onTap: () => context.push('/client/rewards'),
+                                  onTap: () => context.push('/client/loyalty'),
                                 ),
                               ),
                             ],

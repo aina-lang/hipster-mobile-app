@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:tiko_tiko/shared/blocs/notification/notification_bloc.dart';
 import 'package:tiko_tiko/shared/models/notification_model.dart';
 import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
-import 'package:tiko_tiko/shared/services/file_service.dart';
+
 import 'package:tiko_tiko/shared/widgets/custom_snackbar.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -476,9 +476,9 @@ class _NotificationScreenState extends State<NotificationScreen>
   String _getActionLabel(NotificationModel notif) {
     switch (notif.category) {
       case 'devis':
-        return "TÉLÉCHARGER LE DEVIS";
+        return "VOIR LE DEVIS";
       case 'facture':
-        return "TÉLÉCHARGER LA FACTURE";
+        return "VOIR LA FACTURE";
       case 'ticket':
         return "VOIR LE TICKET";
       case 'projet':
@@ -489,14 +489,50 @@ class _NotificationScreenState extends State<NotificationScreen>
   }
 
   void _handleNavigation(BuildContext context, NotificationModel notif) {
+    debugPrint('NotificationScreen: Tapped notification ID: ${notif.id}');
+    debugPrint('NotificationScreen: Category detected: ${notif.category}');
+    debugPrint('NotificationScreen: Full data map: ${notif.data}');
+    debugPrint(
+      'NotificationScreen: Extracted IDs - ticketId: ${notif.ticketId}, invoiceId: ${notif.invoiceId}, projectId: ${notif.projectId}',
+    );
+
     if (notif.category == 'ticket') {
-      if (notif.data?['ticketId'] != null) {
-        context.push('/client/ticket/${notif.data!['ticketId']}');
+      final tid = notif.ticketId;
+      if (tid != null) {
+        debugPrint('NotificationScreen: Pushing to ticket detail: $tid');
+        context.push('/client/ticket/$tid');
       } else {
-        context.push('/client/tickets');
+        debugPrint(
+          'NotificationScreen: ticketId is null, going to tickets list',
+        );
+        context.go('/client/tickets');
       }
-    } else if (notif.category == 'projet' && notif.projectId != null) {
-      context.push('/client/projects/${notif.projectId}');
+    } else if (notif.category == 'projet') {
+      final pid = notif.projectId;
+      if (pid != null) {
+        debugPrint('NotificationScreen: Pushing to project detail: $pid');
+        context.push('/client/projects/$pid');
+      } else {
+        debugPrint(
+          'NotificationScreen: projectId is null, going to projects list',
+        );
+        context.go('/client/projects');
+      }
+    } else if (notif.category == 'devis' || notif.category == 'facture') {
+      final iid = notif.invoiceId;
+      if (iid != null) {
+        debugPrint('NotificationScreen: Pushing to invoice detail: $iid');
+        context.push('/client/invoices/$iid');
+      } else {
+        debugPrint(
+          'NotificationScreen: invoiceId is null, going to invoices list',
+        );
+        context.go('/client/invoices');
+      }
+    } else {
+      debugPrint(
+        'NotificationScreen: Unhandled category "${notif.category}", no redirection.',
+      );
     }
   }
 
@@ -504,42 +540,10 @@ class _NotificationScreenState extends State<NotificationScreen>
     BuildContext context,
     NotificationModel notif,
   ) async {
-    switch (notif.category) {
-      case 'devis':
-      case 'facture':
-        if (notif.invoiceId != null) {
-          AppSnackBar.show(
-            context,
-            "Téléchargement du document...",
-            position: SnackPosition.top,
-          );
-          try {
-            await FileService().downloadAndOpenFile(
-              '/invoices/${notif.invoiceId}/pdf',
-              'document_${notif.invoiceId}.pdf',
-            );
-          } catch (e) {
-            AppSnackBar.show(
-              context,
-              "Erreur lors du téléchargement: $e",
-              type: SnackType.error,
-            );
-          }
-        }
-        break;
-      case 'ticket':
-        if (notif.data?['ticketId'] != null) {
-          context.push('/client/ticket/${notif.data!['ticketId']}');
-        } else {
-          context.push('/client/tickets');
-        }
-        break;
-      case 'projet':
-        if (notif.projectId != null) {
-          context.push('/client/projects/${notif.projectId}');
-        }
-        break;
-    }
+    debugPrint(
+      'NotificationScreen: Handling action for category: ${notif.category}',
+    );
+    _handleNavigation(context, notif);
   }
 
   String _formatDate(DateTime date) {

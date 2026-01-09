@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
@@ -8,17 +9,30 @@ import 'package:tiko_tiko/shared/models/invoice_model.dart';
 import 'package:tiko_tiko/shared/services/file_service.dart';
 import 'package:tiko_tiko/shared/widgets/custom_snackbar.dart';
 
-class InvoiceDetailScreen extends StatelessWidget {
-  final InvoiceModel invoice;
+class InvoiceDetailScreen extends StatefulWidget {
+  final int? invoiceId;
+  final InvoiceModel? initialInvoice;
 
-  const InvoiceDetailScreen({super.key, required this.invoice});
+  const InvoiceDetailScreen({super.key, this.invoiceId, this.initialInvoice})
+    : assert(invoiceId != null || initialInvoice != null);
+
+  @override
+  State<InvoiceDetailScreen> createState() => _InvoiceDetailScreenState();
+}
+
+class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.invoiceId != null) {
+      context.read<InvoiceBloc>().add(
+        InvoiceLoadOneRequested(widget.invoiceId!),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isQuote = invoice.type == 'quote';
-    final typeLabel = isQuote ? "Devis" : "Facture";
-    final theme = Theme.of(context);
-
     return BlocListener<InvoiceBloc, InvoiceState>(
       listener: (context, state) {
         if (state is InvoiceStatusUpdateSuccess) {
@@ -43,22 +57,36 @@ class InvoiceDetailScreen extends StatelessWidget {
           scrolledUnderElevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/client/invoices');
+              }
+            },
           ),
-          title: Text(
-            "$typeLabel #${invoice.reference}",
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: Colors.black,
-            ),
+          title: BlocBuilder<InvoiceBloc, InvoiceState>(
+            builder: (context, state) {
+              final invoice = _getCurrentInvoice(state);
+              if (invoice == null) return const SizedBox.shrink();
+
+              final isQuote = invoice.type == 'quote';
+              final typeLabel = isQuote ? "Devis" : "Facture";
+              return Text(
+                "$typeLabel #${invoice.reference}",
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                ),
+              );
+            },
           ),
           actions: [
             BlocBuilder<InvoiceBloc, InvoiceState>(
               builder: (context, state) {
-                final currentInvoice = state is InvoiceStatusUpdateSuccess
-                    ? state.updatedInvoice
-                    : invoice;
-                return _buildStatusChip(currentInvoice.status);
+                final invoice = _getCurrentInvoice(state);
+                if (invoice == null) return const SizedBox.shrink();
+                return _buildStatusChip(invoice.status);
               },
             ),
             const SizedBox(width: 16),
@@ -66,10 +94,20 @@ class InvoiceDetailScreen extends StatelessWidget {
         ),
         body: BlocBuilder<InvoiceBloc, InvoiceState>(
           builder: (context, state) {
-            final currentInvoice = state is InvoiceStatusUpdateSuccess
-                ? state.updatedInvoice
-                : invoice;
+            final invoice = _getCurrentInvoice(state);
             final isLoading = state is InvoiceLoading;
+
+            if (isLoading && invoice == null) {
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.black),
+              );
+            }
+
+            if (invoice == null) {
+              return const Center(
+                child: Text("Impossible de charger le document"),
+              );
+            }
 
             return Stack(
               children: [
@@ -77,10 +115,11 @@ class InvoiceDetailScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            const SizedBox(height: 10),
                             // Header Info
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -89,337 +128,101 @@ class InvoiceDetailScreen extends StatelessWidget {
                                   "Date d'émission",
                                   DateFormat(
                                     'dd/MM/yyyy',
-                                  ).format(currentInvoice.createdAt),
+                                  ).format(invoice.createdAt),
                                 ),
-                                if (currentInvoice.dueDate != null)
+                                if (invoice.dueDate != null)
                                   _buildInfoColumn(
                                     "Date d'échéance",
                                     DateFormat(
                                       'dd/MM/yyyy',
-                                    ).format(currentInvoice.dueDate!),
+                                    ).format(invoice.dueDate!),
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 30),
+                            const Divider(height: 40),
+
+                            // Parties Info (Sender & Client)
+                            _buildPartiesSection(invoice),
+                            const Divider(height: 40),
+
+                            // Project Info
+                            if (invoice.projectSnapshot != null) ...[
+                              _buildProjectSection(invoice.projectSnapshot!),
+                              const Divider(height: 40),
+                            ],
 
                             // Items Table Header
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    flex: 3,
-                                    child: Text(
-                                      "Description",
-                                      style: theme.textTheme.labelMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                    ),
+                            Text(
+                              "DÉTAILS DES PRESTATIONS",
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: Colors.grey.shade500,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
                                   ),
-                                  Expanded(
-                                    child: Text(
-                                      "Qté",
-                                      textAlign: TextAlign.center,
-                                      style: theme.textTheme.labelMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      "Total",
-                                      textAlign: TextAlign.right,
-                                      style: theme.textTheme.labelMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Items List
-                            ListView.separated(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: currentInvoice.items.length,
-                              separatorBuilder: (_, __) => Divider(
-                                color: Colors.grey.shade100,
-                                height: 1,
-                              ),
-                              itemBuilder: (context, index) {
-                                final item = currentInvoice.items[index];
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                    horizontal: 8,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 3,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              item.description,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                            if (item.unit != null)
-                                              Text(
-                                                "${item.unitPrice.toStringAsFixed(2)} € / ${item.unit}",
-                                                style: TextStyle(
-                                                  color: Colors.grey.shade500,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          item.quantity.toStringAsFixed(0),
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text(
-                                          "${item.total.toStringAsFixed(2)} €",
-                                          textAlign: TextAlign.right,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                            const Divider(thickness: 1, height: 40),
-
-                            // Totals
-                            _buildTotalRow(
-                              "Sous-total (HT)",
-                              "${currentInvoice.subTotal.toStringAsFixed(2)} €",
-                            ),
-                            const SizedBox(height: 8),
-                            _buildTotalRow(
-                              "TVA (${currentInvoice.taxRate.toStringAsFixed(0)}%)",
-                              "${currentInvoice.taxAmount.toStringAsFixed(2)} €",
                             ),
                             const SizedBox(height: 16),
-                            _buildTotalRow(
-                              "TOTAL (TTC)",
-                              "${currentInvoice.amount.toStringAsFixed(2)} €",
-                              isMain: true,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                            _buildItemsTable(invoice),
 
-                    // Action Buttons
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, -5),
-                          ),
-                        ],
-                      ),
-                      child: SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isQuote &&
-                                currentInvoice.status == 'pending') ...[
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: SizedBox(
-                                      height: 55,
-                                      child: ElevatedButton(
-                                        onPressed: isLoading
-                                            ? null
-                                            : () => _handleQuoteAction(
-                                                context,
-                                                currentInvoice.id,
-                                                'accepted',
-                                              ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          elevation: 0,
-                                        ),
-                                        child: const Text(
-                                          "Accepter",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: SizedBox(
-                                      height: 55,
-                                      child: ElevatedButton(
-                                        onPressed: isLoading
-                                            ? null
-                                            : () => _handleQuoteAction(
-                                                context,
-                                                currentInvoice.id,
-                                                'canceled',
-                                              ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.red.shade50,
-                                          foregroundColor: Colors.red,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          elevation: 0,
-                                        ),
-                                        child: const Text(
-                                          "Refuser",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
+                            // Totals
+                            const SizedBox(height: 24),
+                            _buildTotalsSection(invoice),
+
+                            // Notes & Terms
+                            if ((invoice.notes?.isNotEmpty ?? false) ||
+                                (invoice.terms?.isNotEmpty ?? false)) ...[
+                              const Divider(height: 40),
+                              _buildNotesTermsSection(invoice),
                             ],
-                            if (!isQuote &&
-                                currentInvoice.status == 'pending') ...[
-                              SizedBox(
-                                width: double.infinity,
-                                height: 55,
-                                child: ElevatedButton(
-                                  onPressed: isLoading
-                                      ? null
-                                      : () => _payInvoice(
-                                          context,
-                                          currentInvoice.id,
-                                        ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.black,
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child: const Text(
-                                    "Payer maintenant",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
+
+                            // Payment Details
+                            if (invoice.senderDetails?.paymentDetails !=
+                                null) ...[
+                              const Divider(height: 40),
+                              _buildPaymentDetailsSection(
+                                invoice.senderDetails!.paymentDetails!,
                               ),
-                              const SizedBox(height: 12),
                             ],
-                            if (!isQuote &&
-                                currentInvoice.status == 'paid') ...[
-                              SizedBox(
-                                width: double.infinity,
-                                height: 55,
-                                child: ElevatedButton.icon(
-                                  onPressed: () => _viewReceipt(context),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue.shade50,
-                                    foregroundColor: Colors.blue.shade700,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  icon: const Icon(Icons.receipt_outlined),
-                                  label: const Text(
-                                    "Voir le reçu",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                            SizedBox(
-                              width: double.infinity,
-                              height: 55,
-                              child: OutlinedButton.icon(
-                                onPressed: () =>
-                                    _downloadPdf(context, currentInvoice),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.black87,
-                                  side: BorderSide(color: Colors.grey.shade300),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                icon: const Icon(Icons.picture_as_pdf_rounded),
-                                label: const Text(
-                                  "Télécharger le PDF",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
+
+                            const SizedBox(
+                              height: 300,
+                            ), // Space for bottom buttons
                           ],
                         ),
                       ),
                     ),
                   ],
                 ),
+
+                // Fixed Action Buttons at the bottom
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, -5),
+                        ),
+                      ],
+                    ),
+                    child: SafeArea(
+                      child: _buildActionButtons(invoice, isLoading),
+                    ),
+                  ),
+                ),
+
                 if (isLoading)
-                  const Center(
-                    child: CircularProgressIndicator(color: Colors.black),
+                  Container(
+                    color: Colors.white.withOpacity(0.5),
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Colors.black),
+                    ),
                   ),
               ],
             );
@@ -429,11 +232,503 @@ class InvoiceDetailScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildPartiesSection(InvoiceModel invoice) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Sender info
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "DE",
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _fallback(
+                  invoice.senderDetails?.commercialName ??
+                      invoice.senderDetails?.companyName,
+                ),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _buildSmallDetailText(invoice.senderDetails?.address),
+              _buildSmallDetailText(invoice.senderDetails?.email),
+              _buildSmallDetailText(invoice.senderDetails?.phone),
+              if (invoice.senderDetails?.siret != null)
+                _buildSmallDetailText("SIRET: ${invoice.senderDetails!.siret}"),
+            ],
+          ),
+        ),
+        const SizedBox(width: 20),
+        // Client info
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "À",
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _fallback(
+                  invoice.clientSnapshot?.company ??
+                      invoice.clientSnapshot?.name,
+                ),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _buildSmallDetailText(invoice.clientSnapshot?.address),
+              _buildSmallDetailText(
+                "${invoice.clientSnapshot?.zipCode ?? ''} ${invoice.clientSnapshot?.city ?? ''}",
+              ),
+              _buildSmallDetailText(invoice.clientSnapshot?.country),
+              _buildSmallDetailText(invoice.clientSnapshot?.email),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProjectSection(ProjectSnapshotModel project) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "PROJET",
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.1,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _fallback(project.name),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        if (project.description != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            project.description!,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildItemsTable(InvoiceModel invoice) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Text(
+                  "Description",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  "Qté",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  "Total",
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: invoice.items.length,
+          separatorBuilder: (_, __) =>
+              Divider(color: Colors.grey.shade100, height: 1),
+          itemBuilder: (context, index) {
+            final item = invoice.items[index];
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.description,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (item.unit != null)
+                          Text(
+                            "${item.unitPrice.toStringAsFixed(2)} € / ${item.unit}",
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      item.quantity.toStringAsFixed(0),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      "${item.total.toStringAsFixed(2)} €",
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTotalsSection(InvoiceModel invoice) {
+    return Column(
+      children: [
+        _buildTotalRow(
+          "Sous-total (HT)",
+          "${invoice.subTotal.toStringAsFixed(2)} €",
+        ),
+        const SizedBox(height: 8),
+        _buildTotalRow(
+          "TVA (${invoice.taxRate.toStringAsFixed(0)}%)",
+          "${invoice.taxAmount.toStringAsFixed(2)} €",
+        ),
+        const SizedBox(height: 16),
+        _buildTotalRow(
+          "TOTAL (TTC)",
+          "${invoice.amount.toStringAsFixed(2)} €",
+          isMain: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotesTermsSection(InvoiceModel invoice) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (invoice.notes != null && invoice.notes!.isNotEmpty) ...[
+          Text(
+            "NOTES",
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            invoice.notes!,
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+        if (invoice.terms != null && invoice.terms!.isNotEmpty) ...[
+          Text(
+            "CONDITIONS",
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            invoice.terms!,
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPaymentDetailsSection(PaymentDetailsModel payment) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "DÉTAILS DE PAIEMENT",
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.1,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildPaymentRow("Banque", _fallback(payment.bank)),
+        const SizedBox(height: 8),
+        _buildPaymentRow("IBAN", _fallback(payment.iban)),
+        const SizedBox(height: 8),
+        _buildPaymentRow("BIC", _fallback(payment.bic)),
+      ],
+    );
+  }
+
+  Widget _buildPaymentRow(String label, String value) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            label,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(InvoiceModel invoice, bool isLoading) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (invoice.type == 'quote' && invoice.status == 'pending') ...[
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: isLoading
+                        ? null
+                        : () => _handleQuoteAction(
+                            context,
+                            invoice.id,
+                            'accepted',
+                          ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "Accepter",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SizedBox(
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: isLoading
+                        ? null
+                        : () => _handleQuoteAction(
+                            context,
+                            invoice.id,
+                            'canceled',
+                          ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade50,
+                      foregroundColor: Colors.red.shade700,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "Refuser",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (invoice.type != 'quote' && invoice.status == 'pending') ...[
+          SizedBox(
+            width: double.infinity,
+            height: 55,
+            child: ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () => _payInvoice(context, invoice.id),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                "Payer maintenant",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (invoice.type != 'quote' && invoice.status == 'paid') ...[
+          SizedBox(
+            width: double.infinity,
+            height: 55,
+            child: ElevatedButton.icon(
+              onPressed: () => _viewReceipt(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade50,
+                foregroundColor: Colors.blue.shade700,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.receipt_outlined),
+              label: const Text(
+                "Voir le reçu",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        SizedBox(
+          width: double.infinity,
+          height: 55,
+          child: OutlinedButton.icon(
+            onPressed: () => _downloadPdf(context, invoice),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.black87,
+              side: BorderSide(color: Colors.grey.shade300),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.picture_as_pdf_rounded),
+            label: const Text(
+              "Télécharger le PDF",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _fallback(String? value) =>
+      (value == null || value.isEmpty) ? "N/A" : value;
+
+  Widget _buildSmallDetailText(String? text) {
+    if (text == null || text.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        text,
+        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+      ),
+    );
+  }
+
+  InvoiceModel? _lastInvoice;
+
+  InvoiceModel? _getCurrentInvoice(InvoiceState state) {
+    if (state is InvoiceStatusUpdateSuccess) {
+      _lastInvoice = state.updatedInvoice;
+    } else if (state is InvoiceDetailLoaded) {
+      _lastInvoice = state.invoice;
+    }
+    return _lastInvoice ?? widget.initialInvoice;
+  }
+
   void _payInvoice(BuildContext context, int id) async {
     try {
       final repository = InvoiceRepository();
-
-      // 1. Create Payment Intent on backend
       final data = await repository.createPaymentIntent(id);
       final clientSecret = data['clientSecret'];
 
@@ -441,35 +736,24 @@ class InvoiceDetailScreen extends StatelessWidget {
         throw 'Impossible de récupérer le secret de paiement';
       }
 
-      // 2. Initialize Payment Sheet
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: clientSecret,
           merchantDisplayName: 'Hipster Marketing',
-          style: ThemeMode.light, // Or based on app theme
+          style: ThemeMode.light,
           appearance: const PaymentSheetAppearance(
             colors: PaymentSheetAppearanceColors(primary: Colors.black),
           ),
         ),
       );
 
-      // 3. Present Payment Sheet
       await Stripe.instance.presentPaymentSheet();
-
-      // 4. If we reach here, payment was successful or at least sheet was dismissed
-      // Usually, presentPaymentSheet throws on failure/cancel
-
       AppSnackBar.show(context, "Paiement réussi !", type: SnackType.success);
-
-      // Refresh invoice status
       context.read<InvoiceBloc>().add(
         InvoiceStatusUpdateRequested(id: id, status: 'paid'),
       );
     } on StripeException catch (e) {
-      if (e.error.code == FailureCode.Canceled) {
-        // User canceled, do nothing or show message
-        print('Payment canceled by user');
-      } else {
+      if (e.error.code != FailureCode.Canceled) {
         AppSnackBar.show(
           context,
           "Erreur Stripe: ${e.error.localizedMessage}",
@@ -497,7 +781,6 @@ class InvoiceDetailScreen extends StatelessWidget {
       "Ouverture du reçu de paiement...",
       type: SnackType.info,
     );
-    // TODO: Ouvrir le lien du reçu (Stripe receipt_url)
   }
 
   Widget _buildInfoColumn(String label, String value) {

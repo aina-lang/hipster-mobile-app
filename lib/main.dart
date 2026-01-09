@@ -1,7 +1,5 @@
-import 'dart:ui';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:tiko_tiko/app_router.dart';
 import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
@@ -12,8 +10,6 @@ import 'package:tiko_tiko/shared/blocs/network/network_service.dart';
 import 'package:tiko_tiko/shared/app_colors.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:tiko_tiko/shared/blocs/network/network_state.dart';
 import 'package:tiko_tiko/modules/client/project/services/project_repository.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_bloc.dart';
 import 'package:tiko_tiko/modules/client/ticket/services/ticket_repository.dart';
@@ -68,10 +64,12 @@ class AuthListenerWrapper extends StatefulWidget {
 
 class _AuthListenerWrapperState extends State<AuthListenerWrapper> {
   late StreamSubscription _sub;
+  late final AppRouter _appRouter;
 
   @override
   void initState() {
     super.initState();
+    _appRouter = AppRouter(context.read<AuthBloc>());
     _sub = AppConstants.onUnauthorized.listen((_) {
       if (mounted) {
         context.read<AuthBloc>().add(AuthLogoutRequested());
@@ -91,80 +89,9 @@ class _AuthListenerWrapperState extends State<AuthListenerWrapper> {
       debugShowCheckedModeBanner: false,
       title: 'Hipster Marketing',
       theme: AppTheme.zincLight,
-      routerConfig: AppRouter().getRouter(context),
+      routerConfig: _appRouter.router,
       builder: (context, child) {
-        return Stack(
-          children: [
-            if (child != null) child,
-            BlocBuilder<NetworkBloc, NetworkState>(
-              builder: (context, state) {
-                final isOffline = state.connectionStatus.contains(
-                  ConnectivityResult.none,
-                );
-                if (!isOffline) return const SizedBox.shrink();
-
-                return Positioned.fill(
-                  child: Stack(
-                    children: [
-                      BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-                        child: Container(color: Colors.black.withOpacity(0.4)),
-                      ),
-                      Center(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.wifi_off_rounded,
-                                  size: 48,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              const Text(
-                                "Connexion Perdue",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Veuillez vérifier votre connexion internet\npour continuer.",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
-                                  fontSize: 15,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        );
+        return child ?? const SizedBox.shrink();
       },
     );
   }

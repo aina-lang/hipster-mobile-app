@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:tiko_tiko/modules/auth/bloc/auth_bloc.dart';
 import 'package:tiko_tiko/shared/widgets/custom_button.dart';
 import 'package:tiko_tiko/shared/widgets/custom_snackbar.dart';
+import 'package:tiko_tiko/shared/blocs/network/network_bloc.dart';
+import 'package:tiko_tiko/shared/blocs/network/network_state.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class NewPasswordScreen extends StatefulWidget {
   final String email;
@@ -179,26 +182,35 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                   ),
                   const SizedBox(height: 48),
 
-                  Container(
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 20,
-                          spreadRadius: 1,
-                          offset: const Offset(0, 6),
+                  BlocBuilder<NetworkBloc, NetworkState>(
+                    builder: (context, netState) {
+                      final isOffline = netState.connectionStatus.contains(
+                        ConnectivityResult.none,
+                      );
+                      return Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 20,
+                              spreadRadius: 1,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: CustomButton(
-                      text: "Réinitialiser",
-                      isLoading: state is AuthLoading,
-                      onPressed: _onSubmit,
-                      height: 56,
-                      borderRadius: 14,
-                    ),
+                        child: CustomButton(
+                          text: isOffline
+                              ? "Pas de connexion"
+                              : "Réinitialiser",
+                          isLoading: state is AuthLoading,
+                          onPressed: isOffline ? null : _onSubmit,
+                          height: 56,
+                          borderRadius: 14,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
