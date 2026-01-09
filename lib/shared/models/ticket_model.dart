@@ -4,6 +4,7 @@ class TicketModel {
   final String description;
   final String priority;
   final String status;
+  final String? rejectionReason;
   final DateTime createdAt;
 
   TicketModel({
@@ -12,6 +13,7 @@ class TicketModel {
     required this.description,
     required this.priority,
     required this.status,
+    this.rejectionReason,
     required this.createdAt,
   });
 
@@ -22,6 +24,7 @@ class TicketModel {
       description: json['description'],
       priority: json['priority'],
       status: json['status'],
+      rejectionReason: json['rejectionReason'],
       createdAt: DateTime.parse(json['createdAt']),
     );
   }

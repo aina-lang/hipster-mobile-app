@@ -17,11 +17,19 @@ class _ProjectScreenState extends State<ProjectScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String searchQuery = "";
+  String? selectedStatus;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          selectedStatus = null;
+        });
+      }
+    });
     context.read<ProjectBloc>().add(ProjectLoadRequested());
   }
 
@@ -40,8 +48,9 @@ class _ProjectScreenState extends State<ProjectScreen>
   }
 
   List<dynamic> _filterProjects(List<dynamic> projects, bool isPendingTab) {
+    List<dynamic> filtered;
     if (isPendingTab) {
-      return projects
+      filtered = projects
           .where(
             (p) =>
                 (p.status == 'pending' || p.status == 'refused') &&
@@ -49,7 +58,7 @@ class _ProjectScreenState extends State<ProjectScreen>
           )
           .toList();
     } else {
-      return projects
+      filtered = projects
           .where(
             (p) =>
                 p.status != 'pending' &&
@@ -58,6 +67,12 @@ class _ProjectScreenState extends State<ProjectScreen>
           )
           .toList();
     }
+
+    if (selectedStatus != null) {
+      filtered = filtered.where((p) => p.status == selectedStatus).toList();
+    }
+
+    return filtered;
   }
 
   @override
@@ -97,6 +112,54 @@ class _ProjectScreenState extends State<ProjectScreen>
                   color: Colors.black,
                 ),
               ),
+              centerTitle: false,
+              actions: [
+                PopupMenuButton<String>(
+                  tooltip: "Filtrer par statut",
+                  icon: const Icon(
+                    Icons.filter_list_rounded,
+                    color: Colors.black,
+                  ),
+                  onSelected: (value) {
+                    setState(() {
+                      selectedStatus = value == "Tous" ? null : value;
+                    });
+                  },
+                  itemBuilder: (context) {
+                    final bool isPendingTab = _tabController.index == 1;
+                    if (isPendingTab) {
+                      return const [
+                        PopupMenuItem(value: "Tous", child: Text("Tous")),
+                        PopupMenuItem(
+                          value: "pending",
+                          child: Text("En attente"),
+                        ),
+                        PopupMenuItem(value: "refused", child: Text("Refusés")),
+                      ];
+                    } else {
+                      return const [
+                        PopupMenuItem(value: "Tous", child: Text("Tous")),
+                        PopupMenuItem(
+                          value: "planned",
+                          child: Text("Planifiés"),
+                        ),
+                        PopupMenuItem(
+                          value: "in_progress",
+                          child: Text("En cours"),
+                        ),
+                        PopupMenuItem(
+                          value: "on_hold",
+                          child: Text("En pause"),
+                        ),
+                        PopupMenuItem(
+                          value: "completed",
+                          child: Text("Terminés"),
+                        ),
+                      ];
+                    }
+                  },
+                ),
+              ],
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(110),
                 child: Column(
@@ -182,17 +245,21 @@ class _ProjectScreenState extends State<ProjectScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    isPendingTab
-                        ? Icons.hourglass_empty_rounded
-                        : Icons.folder_open_rounded,
+                    selectedStatus != null
+                        ? Icons.filter_list_off_rounded
+                        : (isPendingTab
+                              ? Icons.hourglass_empty_rounded
+                              : Icons.folder_open_rounded),
                     size: 64,
                     color: Colors.grey.shade300,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    isPendingTab
-                        ? "Aucune demande en cours"
-                        : "Aucun projet actif",
+                    selectedStatus != null
+                        ? "Aucun projet avec ce statut"
+                        : (isPendingTab
+                              ? "Aucune demande en cours"
+                              : "Aucun projet actif"),
                     style: TextStyle(
                       color: Colors.grey.shade500,
                       fontWeight: FontWeight.bold,
@@ -204,7 +271,7 @@ class _ProjectScreenState extends State<ProjectScreen>
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
             itemCount: projects.length,
             itemBuilder: (context, index) {
               return ProjectCard(project: projects[index], index: index);

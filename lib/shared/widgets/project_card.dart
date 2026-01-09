@@ -33,7 +33,7 @@ class ProjectCard extends StatelessWidget {
         children: [
           if (isPending)
             SlidableAction(
-              onPressed: (ctx) => _handleCancelAction(ctx),
+              onPressed: (_) => _handleCancelAction(context),
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
               icon: Icons.cancel_outlined,
@@ -44,7 +44,7 @@ class ProjectCard extends StatelessWidget {
             ),
           if (isRefused)
             SlidableAction(
-              onPressed: (ctx) => _handleModifyAction(ctx),
+              onPressed: (_) => _handleModifyAction(context),
               backgroundColor: Colors.blueAccent,
               foregroundColor: Colors.white,
               icon: Icons.edit_note_rounded,
@@ -55,7 +55,7 @@ class ProjectCard extends StatelessWidget {
             ),
           if (!isStaged) ...[
             SlidableAction(
-              onPressed: (ctx) => _handlePdfAction(ctx),
+              onPressed: (_) => _handlePdfAction(context),
               backgroundColor: Colors.blueGrey.shade700,
               foregroundColor: Colors.white,
               icon: Icons.picture_as_pdf,
@@ -65,14 +65,14 @@ class ProjectCard extends StatelessWidget {
               ),
             ),
             SlidableAction(
-              onPressed: (ctx) => _handleQuoteAction(ctx),
+              onPressed: (_) => _handleQuoteAction(context),
               backgroundColor: Colors.teal,
               foregroundColor: Colors.white,
               icon: Icons.receipt_long,
               label: 'Devis',
             ),
             SlidableAction(
-              onPressed: (ctx) => _handleInvoiceAction(ctx),
+              onPressed: (_) => _handleInvoiceAction(context),
               backgroundColor: Colors.indigo,
               foregroundColor: Colors.white,
               icon: Icons.request_quote_outlined,
@@ -81,14 +81,13 @@ class ProjectCard extends StatelessWidget {
           ],
           if (!isPending)
             SlidableAction(
-              onPressed: (ctx) => context.push('/client/tickets'),
+              onPressed: (_) => context.push('/client/tickets'),
               backgroundColor: Colors.orangeAccent,
               foregroundColor: Colors.white,
               icon: Icons.support_agent,
               label: 'Ticket',
-              borderRadius: BorderRadius.horizontal(
-                left: isStaged ? Radius.zero : Radius.zero,
-                right: const Radius.circular(8),
+              borderRadius: const BorderRadius.horizontal(
+                right: Radius.circular(8),
               ),
             ),
         ],
@@ -286,25 +285,27 @@ class ProjectCard extends StatelessWidget {
     ctx.push('/client/projects/new', extra: project);
   }
 
-  void _handleCancelAction(BuildContext ctx) {
+  void _handleCancelAction(BuildContext context) {
+    // Capture dependencies while the context is definitely stable
+    final bloc = context.read<ProjectBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+
     showDialog(
-      context: ctx,
-      builder: (context) => AlertDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
         title: const Text("Annuler la demande"),
         content: const Text(
           "Êtes-vous sûr de vouloir annuler cette demande de projet ? Cette action est irréversible.",
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: const Text("NON", style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () {
-              // Capture the messenger before popping the context
-              final messenger = ScaffoldMessenger.of(ctx);
-              ctx.read<ProjectBloc>().add(ProjectCancelRequested(project.id));
-              Navigator.pop(context);
+              bloc.add(ProjectCancelRequested(project.id));
+              Navigator.pop(dialogCtx);
 
               messenger.showSnackBar(
                 const SnackBar(
@@ -376,7 +377,7 @@ class ProjectCard extends StatelessWidget {
                   subtitle: const Text("Retirer définitivement cette demande"),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _handleCancelAction(ctx);
+                    _handleCancelAction(context);
                   },
                 ),
 
@@ -390,7 +391,7 @@ class ProjectCard extends StatelessWidget {
                   subtitle: const Text("Corriger les détails pour validation"),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _handleModifyAction(ctx);
+                    _handleModifyAction(context);
                   },
                 ),
 
@@ -405,7 +406,7 @@ class ProjectCard extends StatelessWidget {
                   subtitle: const Text("Télécharger la synthèse du projet"),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _handlePdfAction(ctx);
+                    _handlePdfAction(context);
                   },
                 ),
 
@@ -416,7 +417,7 @@ class ProjectCard extends StatelessWidget {
                   subtitle: const Text("Récupérer le devis en cours du projet"),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _handleQuoteAction(ctx);
+                    _handleQuoteAction(context);
                   },
                 ),
 
@@ -432,7 +433,7 @@ class ProjectCard extends StatelessWidget {
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _handleInvoiceAction(ctx);
+                    _handleInvoiceAction(context);
                   },
                 ),
               ],

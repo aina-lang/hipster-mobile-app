@@ -14,6 +14,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:tiko_tiko/shared/blocs/network/network_state.dart';
 import 'package:tiko_tiko/modules/client/project/services/project_repository.dart';
 import 'package:tiko_tiko/modules/client/project/bloc/project_bloc.dart';
+import 'package:tiko_tiko/modules/client/ticket/services/ticket_repository.dart';
+import 'package:tiko_tiko/modules/client/ticket/bloc/ticket_bloc.dart';
 import 'package:tiko_tiko/shared/blocs/ui/ui_cubit.dart';
 
 void main() async {
@@ -46,6 +48,7 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => NetworkBloc(NetworkService())),
         BlocProvider(create: (_) => NotificationBloc()),
         BlocProvider(create: (_) => ProjectBloc(ProjectRepository())),
+        BlocProvider(create: (_) => TicketBloc(TicketRepository())),
         BlocProvider(create: (_) => UiCubit()),
       ],
       child: Builder(

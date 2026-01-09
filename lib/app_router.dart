@@ -211,7 +211,7 @@ class AppRouter {
             ),
             GoRoute(
               path: '/client/tickets',
-              builder: (_, __) => const TicketScreen(),
+              builder: (_, __) => TicketScreen(),
             ),
             GoRoute(
               path: '/client/ticket/:id',
