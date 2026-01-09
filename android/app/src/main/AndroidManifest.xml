@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <application
-        android:label="tiko_tiko"
+        android:label="Hipster Marketing"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity

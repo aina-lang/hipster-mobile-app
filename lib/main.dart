@@ -89,7 +89,7 @@ class _AuthListenerWrapperState extends State<AuthListenerWrapper> {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'Hipster',
+      title: 'Hipster Marketing',
       theme: AppTheme.zincLight,
       routerConfig: AppRouter().getRouter(context),
       builder: (context, child) {
