@@ -1,9 +1,17 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppConstants {
   static final Dio dio = _createDio();
   static const String baseFileUrl = "https://hipster-api.fr";
+
+  // Stream controller to broadcast unauthorized events
+  static final StreamController<void> _unauthorizedController =
+      StreamController<void>.broadcast();
+
+  static Stream<void> get onUnauthorized => _unauthorizedController.stream;
+
   static String resolveFileUrl(String? path) {
     if (path == null || path.isEmpty) return "";
     if (path.startsWith("http")) return path;
@@ -101,8 +109,18 @@ class AppConstants {
               }
             } catch (refreshError) {
               print('Dio Interceptor: Refresh failed: $refreshError');
-              // Optionnel : Forcer la déconnexion ici si le refresh échoue
             }
+
+            // If we reach here, refresh failed or was not possible
+            // Trigger logout flow
+            print(
+              'Dio Interceptor: Refresh failed or not possible. Triggering global logout.',
+            );
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('token');
+            await prefs.remove('refresh_token');
+            await prefs.remove('user_data');
+            _unauthorizedController.add(null);
           }
           return handler.next(e);
         },

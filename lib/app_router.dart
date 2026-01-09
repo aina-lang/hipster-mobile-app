@@ -80,7 +80,8 @@ class AppRouter {
               state.matchedLocation == '/register' ||
               state.matchedLocation == '/otp-verification' ||
               state.matchedLocation == '/forgot-password' ||
-              state.matchedLocation == '/reset-otp';
+              state.matchedLocation == '/reset-otp' ||
+              state.matchedLocation == '/new-password';
 
           if (!isAllowedPublicPath) {
             print('AppRouter: Unauthenticated, redirecting to /login');

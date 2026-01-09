@@ -278,8 +278,7 @@ class _ClientLayoutState extends State<ClientLayout> {
             ),
             onPressed: () {
               Navigator.pop(context);
-              // TODO: log out logic (FirebaseAuth.instance.signOut(), etc.)
-              context.go('/login');
+              context.read<AuthBloc>().add(AuthLogoutRequested());
             },
             child: const Text("Déconnexion"),
           ),
