@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:tiko_tiko/shared/models/notification_model.dart';
 import 'package:tiko_tiko/shared/utils/constants.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -123,8 +124,22 @@ class NotificationService {
 
   // --- Socket.IO ---
 
-  void initSocket(int userId, Function(Map<String, dynamic>) onNotification) {
+  void initSocket(
+    int userId,
+    Function(Map<String, dynamic>) onNotification,
+  ) async {
     if (_socket != null && _socket!.connected) return;
+
+    // Check network connectivity before attempting socket connection
+    final connectivityResult = await Connectivity().checkConnectivity();
+    final isOffline = connectivityResult.contains(ConnectivityResult.none);
+
+    if (isOffline) {
+      print(
+        'NotificationService: Network offline, skipping Socket.IO connection',
+      );
+      return;
+    }
 
     print(
       "NotificationService: Connecting Socket to ${AppConstants.baseFileUrl}",

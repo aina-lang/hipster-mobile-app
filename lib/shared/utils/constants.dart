@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class AppConstants {
   static final Dio dio = _createDio();
@@ -28,6 +29,36 @@ class AppConstants {
       ),
     );
 
+    // Connectivity check interceptor - prevents requests when offline
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          // Check network connectivity before allowing request
+          final connectivityResult = await Connectivity().checkConnectivity();
+          final isOffline = connectivityResult.contains(
+            ConnectivityResult.none,
+          );
+
+          if (isOffline) {
+            print(
+              '🔴 Dio Interceptor: Network offline, blocking request to ${options.path}',
+            );
+            return handler.reject(
+              DioException(
+                requestOptions: options,
+                type: DioExceptionType.connectionError,
+                error:
+                    'Pas de connexion Internet. Veuillez vérifier votre connexion.',
+              ),
+            );
+          }
+
+          return handler.next(options);
+        },
+      ),
+    );
+
+    // Authentication interceptor
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {

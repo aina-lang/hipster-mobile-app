@@ -23,8 +23,15 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
     });
   }
 
+  // Helper method to check if device is online
+  static bool isOnline(NetworkState state) {
+    return !state.connectionStatus.contains(ConnectivityResult.none);
+  }
+
   void _onStatusChanged(
-      NetworkStatusChanged event, Emitter<NetworkState> emit) {
+    NetworkStatusChanged event,
+    Emitter<NetworkState> emit,
+  ) {
     emit(NetworkUpdated(event.connectionStatus));
   }
 

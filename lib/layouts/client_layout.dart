@@ -58,271 +58,338 @@ class _ClientLayoutState extends State<ClientLayout> {
         ? authState.user.isProfileComplete
         : true;
 
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        scrolledUnderElevation: 0,
-        backgroundColor: Colors.white,
-        centerTitle: true,
-        title: const Text(
-          "HIPSTER MARKETING",
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2.0,
-            fontSize: 16,
-          ),
-        ),
-        leading: isComplete
-            ? BlocBuilder<NotificationBloc, NotificationState>(
-                builder: (context, state) {
-                  int unreadCount = 0;
-                  if (state is NotificationLoaded) {
-                    unreadCount = state.unreadCount;
-                  }
-                  return Container(
-                    margin: const EdgeInsets.only(left: 8),
-                    child: IconButton(
-                      icon: Badge(
-                        label: Text(unreadCount.toString()),
-                        isLabelVisible: unreadCount > 0,
-                        backgroundColor: Colors.black,
-                        child: const Icon(
-                          Icons.notifications_none_rounded,
-                          color: Colors.black,
-                          size: 26,
-                        ),
-                      ),
-                      onPressed: () => context.push('/client/notifications'),
-                    ),
-                  );
-                },
-              )
-            : null,
-        actions: [
-          if (isComplete)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: PopupMenuButton<String>(
-                color: Colors.white,
-                offset: const Offset(0, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                icon: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.black12),
-                  ),
-                  child: const CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person_outline_rounded,
-                      color: Colors.black,
-                      size: 20,
-                    ),
+    return BlocBuilder<NetworkBloc, NetworkState>(
+      builder: (context, networkState) {
+        final isOffline = networkState.connectionStatus.contains(
+          ConnectivityResult.none,
+        );
+
+        return Stack(
+          children: [
+            // Main Scaffold
+            Scaffold(
+              extendBody: true,
+              backgroundColor: theme.scaffoldBackgroundColor,
+              appBar: AppBar(
+                scrolledUnderElevation: 0,
+                backgroundColor: Colors.white,
+                centerTitle: true,
+                title: const Text(
+                  "HIPSTER MARKETING",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2.0,
+                    fontSize: 16,
                   ),
                 ),
-                onSelected: (value) {
-                  if (value == 'profile') context.go('/profile');
-                  if (value == 'logout') _showLogoutDialog(context);
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem<String>(
-                    value: 'profile',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.person_outline_rounded,
-                          size: 20,
-                          color: Colors.black,
+                leading: isComplete
+                    ? BlocBuilder<NotificationBloc, NotificationState>(
+                        builder: (context, state) {
+                          int unreadCount = 0;
+                          if (state is NotificationLoaded) {
+                            unreadCount = state.unreadCount;
+                          }
+                          return Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            child: IconButton(
+                              icon: Badge(
+                                label: Text(unreadCount.toString()),
+                                isLabelVisible: unreadCount > 0,
+                                backgroundColor: Colors.black,
+                                child: const Icon(
+                                  Icons.notifications_none_rounded,
+                                  color: Colors.black,
+                                  size: 26,
+                                ),
+                              ),
+                              onPressed: () =>
+                                  context.push('/client/notifications'),
+                            ),
+                          );
+                        },
+                      )
+                    : null,
+                actions: [
+                  if (isComplete)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: PopupMenuButton<String>(
+                        color: Colors.white,
+                        offset: const Offset(0, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        SizedBox(width: 12),
-                        Text(
-                          "Mon Profil",
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem<String>(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout_rounded, size: 20, color: Colors.red),
-                        SizedBox(width: 12),
-                        Text(
-                          "Déconnexion",
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w500,
+                        icon: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black12),
+                          ),
+                          child: const CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.white,
+                            child: Icon(
+                              Icons.person_outline_rounded,
+                              color: Colors.black,
+                              size: 20,
+                            ),
                           ),
                         ),
-                      ],
+                        onSelected: (value) {
+                          if (value == 'profile') context.go('/profile');
+                          if (value == 'logout') _showLogoutDialog(context);
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem<String>(
+                            value: 'profile',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.person_outline_rounded,
+                                  size: 20,
+                                  color: Colors.black,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  "Mon Profil",
+                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(),
+                          const PopupMenuItem<String>(
+                            value: 'logout',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.logout_rounded,
+                                  size: 20,
+                                  color: Colors.red,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  "Déconnexion",
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
-            ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          widget.child,
-          BlocBuilder<NetworkBloc, NetworkState>(
-            builder: (context, state) {
-              final isOffline = state.connectionStatus.contains(
-                ConnectivityResult.none,
-              );
-              if (!isOffline) return const SizedBox.shrink();
 
-              return Positioned.fill(
-                child: Stack(
-                  children: [
-                    BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-                      child: Container(color: Colors.black.withOpacity(0.4)),
-                    ),
-                    Center(
-                      child: Material(
-                        color: Colors.transparent,
+              body: widget.child,
+
+              /// --- Premium Animated Notch Bottom Navigation ---
+              bottomNavigationBar: isComplete
+                  ? BlocBuilder<NetworkBloc, NetworkState>(
+                      builder: (context, networkState) {
+                        final isOffline = networkState.connectionStatus
+                            .contains(ConnectivityResult.none);
+
+                        return BlocBuilder<UiCubit, UiState>(
+                          builder: (context, uiState) {
+                            return AnimatedSlide(
+                              offset:
+                                  (uiState.isBottomNavBarVisible && !isOffline)
+                                  ? Offset.zero
+                                  : const Offset(0, 1.2),
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              child: AnimatedNotchBottomBar(
+                                notchBottomBarController: _controller,
+                                color: Colors.white,
+                                showLabel: true,
+                                notchColor: Colors.black,
+                                removeMargins: false,
+                                bottomBarWidth: 500,
+                                durationInMilliSeconds: 300,
+                                bottomBarItems: const [
+                                  BottomBarItem(
+                                    inActiveItem: Icon(
+                                      Icons.home_outlined,
+                                      color: Colors.black,
+                                    ),
+                                    activeItem: Icon(
+                                      Icons.home_filled,
+                                      color: Colors.white,
+                                    ),
+                                    itemLabel: 'Accueil',
+                                  ),
+                                  BottomBarItem(
+                                    inActiveItem: Icon(
+                                      Icons.folder_outlined,
+                                      color: Colors.black,
+                                    ),
+                                    activeItem: Icon(
+                                      Icons.folder,
+                                      color: Colors.white,
+                                    ),
+                                    itemLabel: 'Projets',
+                                  ),
+                                  BottomBarItem(
+                                    inActiveItem: Icon(
+                                      Icons.account_balance_wallet_outlined,
+                                      color: Colors.black,
+                                    ),
+                                    activeItem: Icon(
+                                      Icons.account_balance_wallet,
+                                      color: Colors.white,
+                                    ),
+                                    itemLabel: 'Factures',
+                                  ),
+                                  BottomBarItem(
+                                    inActiveItem: Icon(
+                                      Icons.chat_bubble_outline,
+                                      color: Colors.black,
+                                    ),
+                                    activeItem: Icon(
+                                      Icons.chat_bubble,
+                                      color: Colors.white,
+                                    ),
+                                    itemLabel: 'Tickets',
+                                  ),
+                                  BottomBarItem(
+                                    inActiveItem: Icon(
+                                      Icons.star_outline,
+                                      color: Colors.black,
+                                    ),
+                                    activeItem: Icon(
+                                      Icons.star,
+                                      color: Colors.white,
+                                    ),
+                                    itemLabel: 'Loyalty',
+                                  ),
+                                ],
+                                onTap: (index) {
+                                  setState(() => _selectedIndex = index);
+                                  context.go(_routes[index]);
+                                  HapticFeedback.lightImpact();
+                                },
+                                kIconSize: 24.0,
+                                kBottomRadius: 28.0,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    )
+                  : null,
+            ),
+
+            // Offline overlay modal (appears ABOVE everything including AppBar)
+            if (isOffline)
+              Positioned.fill(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.4),
+                  ),
+                  child: Center(
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.easeOutBack,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: 0.8 + (0.2 * value),
+                          child: Opacity(opacity: value, child: child),
+                        );
+                      },
+                      child: Container(
+                        width: MediaQuery.of(context).size.width * 0.85,
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        padding: const EdgeInsets.all(48),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 40,
+                              spreadRadius: 5,
+                              offset: const Offset(0, 15),
+                            ),
+                          ],
+                        ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // Icon Container
                             Container(
                               padding: const EdgeInsets.all(24),
                               decoration: BoxDecoration(
-                                color: Colors.white,
                                 shape: BoxShape.circle,
+                                color: const Color(0xFFF5F5F5),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 10),
+                                    color: Colors.black.withOpacity(0.06),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 8),
                                   ),
                                 ],
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.wifi_off_rounded,
-                                size: 48,
-                                color: Colors.black,
+                                size: 72,
+                                color: Colors.grey[700],
                               ),
                             ),
-                            const SizedBox(height: 24),
-                            const Text(
-                              "Connexion Perdue",
+                            const SizedBox(height: 32),
+
+                            // Title
+                            Text(
+                              'Pas de connexion',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
+                                fontSize: 32,
                                 fontWeight: FontWeight.w900,
+                                color: Colors.grey[900],
+                                letterSpacing: -0.8,
+                                height: 1.2,
                               ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Subtitle
+                            Text(
+                              'On dirait que le Wi-Fi a pris une pause ☕',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[600],
+                                height: 1.5,
+                                letterSpacing: 0.1,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              "Veuillez vérifier votre connexion internet\npour continuer.",
-                              textAlign: TextAlign.center,
+                              'Vérifiez votre connexion Internet.',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 15,
-                                height: 1.4,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.grey[500],
+                                height: 1.5,
                               ),
+                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-
-      /// --- Premium Animated Notch Bottom Navigation ---
-      bottomNavigationBar: isComplete
-          ? BlocBuilder<UiCubit, UiState>(
-              builder: (context, uiState) {
-                return AnimatedSlide(
-                  offset: uiState.isBottomNavBarVisible
-                      ? Offset.zero
-                      : const Offset(0, 1.2),
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  child: AnimatedNotchBottomBar(
-                    notchBottomBarController: _controller,
-                    color: Colors.white,
-                    showLabel: true,
-                    notchColor: Colors.black,
-                    removeMargins: false,
-                    bottomBarWidth: 500,
-                    durationInMilliSeconds: 300,
-                    bottomBarItems: const [
-                      BottomBarItem(
-                        inActiveItem: Icon(
-                          Icons.home_outlined,
-                          color: Colors.black,
-                        ),
-                        activeItem: Icon(
-                          Icons.home_filled,
-                          color: Colors.white,
-                        ),
-                        itemLabel: 'Accueil',
-                      ),
-                      BottomBarItem(
-                        inActiveItem: Icon(
-                          Icons.folder_outlined,
-                          color: Colors.black,
-                        ),
-                        activeItem: Icon(Icons.folder, color: Colors.white),
-                        itemLabel: 'Projets',
-                      ),
-                      BottomBarItem(
-                        inActiveItem: Icon(
-                          Icons.account_balance_wallet_outlined,
-                          color: Colors.black,
-                        ),
-                        activeItem: Icon(
-                          Icons.account_balance_wallet,
-                          color: Colors.white,
-                        ),
-                        itemLabel: 'Factures',
-                      ),
-                      BottomBarItem(
-                        inActiveItem: Icon(
-                          Icons.chat_bubble_outline,
-                          color: Colors.black,
-                        ),
-                        activeItem: Icon(
-                          Icons.chat_bubble,
-                          color: Colors.white,
-                        ),
-                        itemLabel: 'Tickets',
-                      ),
-                      BottomBarItem(
-                        inActiveItem: Icon(
-                          Icons.star_outline,
-                          color: Colors.black,
-                        ),
-                        activeItem: Icon(Icons.star, color: Colors.white),
-                        itemLabel: 'Loyalty',
-                      ),
-                    ],
-                    onTap: (index) {
-                      setState(() => _selectedIndex = index);
-                      context.go(_routes[index]);
-                      HapticFeedback.lightImpact();
-                    },
-                    kIconSize: 24.0,
-                    kBottomRadius: 28.0,
                   ),
-                );
-              },
-            )
-          : null,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
